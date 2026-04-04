@@ -4,11 +4,11 @@ data/embeddings/
 data/processed/*.csv
 data/synthetic/*.json
 
-# Model weights
-models/
+# Model weights (top-level only, not src/models/)
+/models/
 
-# Results (regenerated from notebook)
-results/
+# Results (regenerated from notebook, top-level only)
+/results/
 
 # Python
 __pycache__/
