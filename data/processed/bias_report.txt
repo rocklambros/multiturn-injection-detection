@@ -1,0 +1,49 @@
+BIAS REPORT
+============================================================
+
+--- Train Split (51373 samples) ---
+  Class 0 (benign): 33007 (64.2%)
+  Class 1 (injection): 18366 (35.8%)
+  Source 'imoxto': 21596 (42.0%)
+  Source 'spml': 10752 (20.9%)
+  Source 'safeguard': 6801 (13.2%)
+  Source 'trustailab_regular': 6788 (13.2%)
+  Source 'neuralchemy': 4267 (8.3%)
+  Source 'deepset': 439 (0.9%)
+  Source 'jackhhao': 416 (0.8%)
+  Source 'trustailab_jailbreak': 314 (0.6%)
+  Text length (benign): mean=527, std=482, min=11, max=2048
+  Text length (injection): mean=577, std=537, min=11, max=2048
+
+--- Val Split (11008 samples) ---
+  Class 0 (benign): 7073 (64.3%)
+  Class 1 (injection): 3935 (35.7%)
+  Source 'imoxto': 4636 (42.1%)
+  Source 'spml': 2321 (21.1%)
+  Source 'safeguard': 1455 (13.2%)
+  Source 'trustailab_regular': 1418 (12.9%)
+  Source 'neuralchemy': 915 (8.3%)
+  Source 'deepset': 107 (1.0%)
+  Source 'jackhhao': 88 (0.8%)
+  Source 'trustailab_jailbreak': 68 (0.6%)
+  Text length (benign): mean=526, std=479, min=12, max=2048
+  Text length (injection): mean=583, std=543, min=15, max=2035
+
+--- Test Split (11009 samples) ---
+  Class 0 (benign): 7073 (64.2%)
+  Class 1 (injection): 3936 (35.8%)
+  Source 'imoxto': 4573 (41.5%)
+  Source 'spml': 2425 (22.0%)
+  Source 'trustailab_regular': 1438 (13.1%)
+  Source 'safeguard': 1417 (12.9%)
+  Source 'neuralchemy': 900 (8.2%)
+  Source 'deepset': 103 (0.9%)
+  Source 'jackhhao': 99 (0.9%)
+  Source 'trustailab_jailbreak': 54 (0.5%)
+  Text length (benign): mean=520, std=476, min=9, max=2048
+  Text length (injection): mean=579, std=538, min=11, max=2048
+
+KNOWN LIMITATIONS
+----------------------------------------
+- All datasets are English-only. Non-English injection patterns are not represented.
+- Datasets skew toward known attack patterns. Novel social engineering approaches are underrepresented.
