@@ -4,30 +4,32 @@
 
 **GitHub Issues:** #7 — [Data Pipeline] PyTorch Dataset and DataLoader classes
 
-**Prerequisites:** Prompt 04 (tokenizer must exist)
+**Prerequisites:** Prompt 04 complete (tokenizer exists)
 
 **Expected Outputs:**
 - `src/data/loader.py`
 
 ---
 
-## Prompt
+## Role
 
 You are a PyTorch engineer building the data loading pipeline.
 
-<investigate_before_answering>
-1. Read `PRD.md` Section 3.5 (Data Loader) for class signatures and requirements.
-2. Read `PRD.md` Section 2.3 for tensor shapes.
-3. Read `src/utils/tokenizer.py` for encode functions.
-4. Read `src/utils/config.py` for batch sizes.
-</investigate_before_answering>
+## Grounding
 
-### Task
+Use **superpowers** to read:
+1. `PRD.md` Section 3.5 (Data Loader) for class signatures.
+2. `PRD.md` Section 2.3 for tensor shapes.
+3. `src/utils/tokenizer.py` for encode function signatures.
+
+Use **goodmem** to read `data.vocab_size`, `data.max_sequence_length`.
+
+## Task
 
 Write `src/data/loader.py` with:
 - `SingleTurnDataset(Dataset)` returning (token_ids, label)
 - `MultiTurnDataset(Dataset)` returning (turn_token_ids, mask, label)
-- Factory functions for DataLoaders
+- `create_single_turn_loaders(...)` and `create_multi_turn_loaders(...)` factory functions
 
 **Completion criteria:**
 - Multi-turn mask: 1=real turn, 0=padding
@@ -35,21 +37,32 @@ Write `src/data/loader.py` with:
 - All: num_workers=2, pin_memory=True
 - Print batch shapes after first iteration
 
-### Tool Guidance
+## Plugin Usage
 
-- **Context7 plugin:** Verify PyTorch Dataset/DataLoader API for pin_memory and num_workers usage.
-- **Ralph loops:** Create a DataLoader, iterate one batch, verify shapes match PRD Section 2.3.
+**context7:** Verify PyTorch `Dataset`, `DataLoader` API for `pin_memory` and `num_workers`.
 
-### Verification
+**superpowers:** Run shape verification.
+
+**ralph-loop:**
+1. Generate `src/data/loader.py`
+2. Create a DataLoader with dummy data, iterate one batch
+3. Review: Shapes match PRD Section 2.3? Single-turn: (batch, 256). Multi-turn: (batch, 10, 256) with mask (batch, 10).
+4. Fix any shape mismatches
+5. Confirm pass
+
+**goodmem:** After completion, persist:
+- `data.loader_ready = true`
+- `data.single_turn_shape = (batch, 256)`
+- `data.multi_turn_shape = (batch, 10, 256)`
+
+## Verification
 
 ```bash
 python -c "
-from src.data.loader import SingleTurnDataset
 import torch
-# Quick shape check with dummy data
+from src.data.loader import SingleTurnDataset, MultiTurnDataset
 ds = SingleTurnDataset(torch.randint(0, 100, (50, 256)), torch.randint(0, 2, (50,)))
-print(f'Dataset length: {len(ds)}')
-print(f'Sample shapes: {ds[0][0].shape}, {ds[0][1].shape}')
+print(f'SingleTurn sample: {ds[0][0].shape}, {ds[0][1].shape}')
 "
 ```
 

@@ -4,40 +4,54 @@
 
 **GitHub Issues:** #21 — [Deliverable] 10-minute presentation deck
 
-**Prerequisites:** Prompt 19 (report provides narrative)
+**Prerequisites:** Prompt 19 complete (report provides narrative)
 
 **Expected Outputs:**
-- Slide deck (PPTX or PDF)
+- Slide deck (PPTX or PDF) in `report/`
 
 ---
 
-## Prompt
+## Role
 
-You are preparing a 10-minute technical presentation for a graduate deep learning class.
+You are preparing a 10-minute technical presentation for a graduate deep learning class. The audience knows ML fundamentals but not your specific problem domain (prompt injection, multi-turn attacks). Lead with the problem, not the solution.
 
-<investigate_before_answering>
-1. Read `report/final_report.md` for narrative and results.
-2. Read `PRD.md` Section 5.2 for rubric context.
-3. Gather key figures from `results/` directories.
-</investigate_before_answering>
+## Grounding
 
-### Task
+Use **superpowers** to read:
+1. `report/final_report.md` for narrative and results.
+2. Key figures from `results/` directories.
 
-Create ~10-12 slides covering:
-- Problem and motivation
-- Architecture overview
-- Data strategy
-- Key results (cross-iteration F1 chart)
-- Attention heatmap examples
-- Conclusions and future work
+Use **goodmem** to read:
+- `models.core_finding_f1_gap` — the headline number
+- `models.attention_pattern` — the interpretability story
+- `models.encoder_decision` and `models.encoder_decision_reasoning`
+
+## Task
+
+Create ~10-12 slides.
 
 **Completion criteria:**
-- 10-minute time limit
+- Slide 1: Title
+- Slides 2-3: Problem and motivation (what are multi-turn attacks, why current detectors fail)
+- Slide 4: Architecture overview (dual-encoder diagram)
+- Slide 5: Data strategy (3 datasets + 4 synthetic strategies)
+- Slides 6-8: Key results (cross-iteration F1 chart, multi-turn vs single-turn gap, attention heatmap)
+- Slide 9: Security implications (threshold tuning, FN vs FP cost)
+- Slide 10: Conclusions and future work
 - Anticipate Q&A: why not transformers? How realistic is synthetic data?
-- Key visuals: architecture diagram, comparison bar chart, attention heatmap
 
-### Tool Guidance
+## Plugin Usage
 
-- **Superpowers plugin:** File system operations for slide creation.
+**superpowers:** Create slide deck file.
+
+**ralph-loop:**
+1. Generate deck
+2. Review: 10-minute pacing? Key visuals included? Q&A prep adequate?
+3. Fix
+4. Confirm
+
+**goodmem:** After completion, persist:
+- `deliverables.presentation_path = report/presentation.*`
+- `deliverables.build_complete = true`
 
 **Execution:** `claude --prompt prompts/20_presentation.md --ultrathink`

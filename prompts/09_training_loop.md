@@ -4,51 +4,62 @@
 
 **GitHub Issues:** #10 — [Training] PyTorch training loop with early stopping and checkpointing
 
-**Prerequisites:** Prompt 01 (project skeleton)
+**Prerequisites:** Prompt 01 complete (project skeleton)
 
 **Expected Outputs:**
 - `src/training/train.py`
 
 ---
 
-## Prompt
+## Role
 
-You are a PyTorch engineer building the training infrastructure.
+You are a PyTorch engineer building training infrastructure.
 
-<investigate_before_answering>
-1. Read `PRD.md` Section 4.1 (Training Infrastructure) for the function signature and requirements.
-2. Read `src/utils/config.py` for IterationConfig fields (epochs, patience, learning_rate).
-3. Read `src/evaluation/metrics.py` for the metrics interface.
-</investigate_before_answering>
+## Grounding
 
-### Task
+Use **superpowers** to read:
+1. `PRD.md` Section 4.1 (Training Infrastructure) for function signature and requirements.
+2. `src/utils/config.py` for IterationConfig fields.
 
-Write `src/training/train.py` with `train_model()` function.
+## Task
+
+Write `src/training/train.py` with:
+```python
+def train_model(model, train_loader, val_loader, epochs, iteration_name,
+                optimizer, criterion, device, patience=3):
+```
 
 **Completion criteria:**
-- Each epoch: forward pass, val loss, early stopping check
-- Early stopping restores best weights
+- Each epoch: forward pass batches, compute val loss, check early stopping
+- Early stopping restores best weights when patience exhausted
 - LR scheduler: ReduceLROnPlateau(factor=0.5, patience=2, min_lr=1e-6)
-- Gradient clipping: max_norm=1.0
+- Gradient clipping: clip_grad_norm_(max_norm=1.0)
 - Saves: training_history.json, model_summary.txt, {iteration_name}.pt
 - GPU support with .to(device)
 - Progress bars via tqdm
-- Training 1 epoch on dummy data works
 
-### Tool Guidance
+## Plugin Usage
 
-- **Context7 plugin:** Look up PyTorch ReduceLROnPlateau and clip_grad_norm_ API.
-- **Ralph loops:** Create a tiny model, train 1 epoch on random data, verify all save files are created.
+**context7:** Look up `torch.optim.lr_scheduler.ReduceLROnPlateau` and `torch.nn.utils.clip_grad_norm_` to verify API signatures.
 
-### Verification
+**superpowers:** Run smoke test with dummy model and random data.
+
+**ralph-loop:**
+1. Generate `src/training/train.py`
+2. Create a tiny `nn.Linear(10, 1)`, random DataLoader, train 2 epochs
+3. Review: Does training_history.json get created? Does .pt checkpoint save? Does early stopping logic work?
+4. Fix any issues
+5. Confirm
+
+**goodmem:** After completion, persist:
+- `foundation.training_ready = true`
+- `foundation.training_function = src.training.train.train_model`
+
+## Verification
 
 ```bash
 python -c "
-import torch
-import torch.nn as nn
 from src.training.train import train_model
-# Minimal smoke test with dummy model
-model = nn.Linear(10, 1)
 print('Training loop imports OK')
 "
 ```
