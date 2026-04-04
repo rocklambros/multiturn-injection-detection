@@ -4,7 +4,7 @@
 
 **GitHub Issues:** #9 — [Evaluation] Metrics, error analysis, and visualization modules
 
-**Prerequisites:** Prompt 01 (project skeleton)
+**Prerequisites:** Prompt 01 complete (project skeleton)
 
 **Expected Outputs:**
 - `src/evaluation/metrics.py`
@@ -13,20 +13,21 @@
 
 ---
 
-## Prompt
+## Role
 
-You are an ML engineer building the evaluation pipeline.
+You are an ML engineer building a reusable evaluation pipeline.
 
-<investigate_before_answering>
-1. Read `PRD.md` Sections 4.2 (Metrics), 4.3 (Error Analysis), 4.4 (Visualization).
-2. Read `src/utils/config.py` for iteration names used in results/ paths.
-</investigate_before_answering>
+## Grounding
 
-### Task
+Use **superpowers** to read:
+1. `PRD.md` Sections 4.2 (Metrics), 4.3 (Error Analysis), 4.4 (Visualization).
+2. `src/utils/config.py` for iteration names.
 
-Build three evaluation modules:
+## Task
 
-**metrics.py:** `compute_metrics(y_true, y_pred, y_prob) -> dict` with F1 (primary), precision, recall, ROC-AUC, PR-AUC, confusion matrix. `save_metrics()` to JSON.
+Build three evaluation modules.
+
+**metrics.py:** `compute_metrics(y_true, y_pred, y_prob) -> dict` with F1 (primary), precision, recall, ROC-AUC, PR-AUC, confusion matrix. `save_metrics(metrics_dict, iteration_name)` to JSON.
 
 **analysis.py:** Confusion matrix PNG, top 10 FP/FN with confidence, confidence histogram, attention heatmaps for multi-turn.
 
@@ -34,21 +35,35 @@ Build three evaluation modules:
 
 **Completion criteria:**
 - All plots saved as PNG to `results/{iteration_name}/`
-- `compute_metrics()` with dummy data produces valid JSON output
-- F1 is clearly marked as primary metric everywhere
+- `compute_metrics()` with dummy data produces valid JSON
+- F1 clearly marked as primary metric
 
-### Tool Guidance
+## Plugin Usage
 
-- **Ralph loops:** Call compute_metrics with dummy arrays. Verify output JSON structure. Generate a dummy plot. Fix any matplotlib/seaborn issues.
+**Dispatch subagents** — these three modules are independent:
+- Subagent A: Build `metrics.py`
+- Subagent B: Build `analysis.py`
+- Subagent C: Build `visualization.py`
 
-### Verification
+**ralph-loop:** For each module:
+1. Generate the code
+2. Call with dummy arrays: `compute_metrics(np.array([0,1,1,0]), np.array([0,1,0,0]), np.array([0.1,0.9,0.4,0.2]))`
+3. Verify output JSON structure and that plot functions don't crash
+4. Fix matplotlib/seaborn backend issues if any
+5. Confirm
+
+**goodmem:** After completion, persist:
+- `foundation.eval_ready = true`
+- `foundation.primary_metric = F1`
+
+## Verification
 
 ```bash
 python -c "
 from src.evaluation.metrics import compute_metrics
 import numpy as np
-metrics = compute_metrics(np.array([0,1,1,0]), np.array([0,1,0,0]), np.array([0.1,0.9,0.4,0.2]))
-print(metrics)
+m = compute_metrics(np.array([0,1,1,0]), np.array([0,1,0,0]), np.array([0.1,0.9,0.4,0.2]))
+print(m)
 "
 ```
 

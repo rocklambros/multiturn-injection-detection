@@ -4,7 +4,7 @@
 
 **GitHub Issues:** #4 — [Data Pipeline] Clean, merge, deduplicate, and split datasets
 
-**Prerequisites:** Prompt 02 (raw data must be downloaded)
+**Prerequisites:** Prompt 02 complete (raw data downloaded)
 
 **Expected Outputs:**
 - `src/data/clean.py`
@@ -13,19 +13,21 @@
 
 ---
 
-## Prompt
+## Role
 
 You are a data engineer building the cleaning and splitting pipeline.
 
-<investigate_before_answering>
-1. Read `PRD.md` Section 3.2 (Data Cleaning and Merging) for all 9 cleaning steps in order.
-2. Read `data/raw/manifest.json` to understand source column names and schemas.
-3. Read `src/utils/seed.py` for reproducibility setup.
-</investigate_before_answering>
+## Grounding
 
-### Task
+Use **superpowers** to read:
+1. `PRD.md` Section 3.2 — all 9 cleaning steps in order.
+2. `data/raw/manifest.json` to understand source column names and schemas.
 
-Write `src/data/clean.py` implementing all 9 cleaning steps from PRD Section 3.2 in order.
+Use **goodmem** to read `data.deepset_rows`, `data.safeguard_rows`, `data.neuralchemy_rows` for expected input sizes.
+
+## Task
+
+Write `src/data/clean.py` implementing all 9 cleaning steps from PRD Section 3.2 in exact order.
 
 **Completion criteria:**
 - Labels normalized: 0=benign, 1=injection across all sources
@@ -35,12 +37,27 @@ Write `src/data/clean.py` implementing all 9 cleaning steps from PRD Section 3.2
 - Class distribution printed per split
 - `data/processed/bias_report.txt` with all flags from PRD Section 3.2
 
-### Tool Guidance
+## Plugin Usage
 
-- **Ralph loops:** Run the pipeline, verify output CSVs exist with expected row counts and column names. Check class balance. Fix issues.
-- **Goodman plugin:** Persist final dataset sizes and class distributions to agent memory for downstream prompts.
+**superpowers:** Run the cleaning pipeline end-to-end. Verify output files.
 
-### Verification
+**ralph-loop:**
+1. Generate `src/data/clean.py`
+2. Execute: `python src/data/clean.py`
+3. Review: Check output CSV row counts, column names, class balance, bias report content
+4. Fix any normalization or splitting issues
+5. Confirm all criteria pass
+
+**goodmem:** After completion, persist:
+- `data.train_samples = <N>`
+- `data.val_samples = <N>`
+- `data.test_samples = <N>`
+- `data.class_balance_train = <benign_pct / injection_pct>`
+- `data.total_after_cleaning = <N>`
+
+**serena:** Checkpoint after this prompt — the cleaned data is the foundation for everything downstream.
+
+## Verification
 
 ```bash
 python src/data/clean.py

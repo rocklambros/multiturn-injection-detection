@@ -9,33 +9,53 @@
 **Expected Outputs:**
 - GRU variant in `src/models/single_turn.py`
 - `results/iter4_gru/` with metrics
-- Documented decision: LSTM or GRU for turn encoder
+- Documented encoder decision for Iteration 5
 
 ---
 
-## Prompt
+## Role
 
-You are a deep learning engineer making an architecture selection decision.
+You are a deep learning engineer making a critical architecture selection that affects the rest of the project.
 
-<investigate_before_answering>
-1. Read `PRD.md` Section 2.4 Iteration 4.
-2. Read `src/models/single_turn.py` for BiLSTMClassifier to base GRU variant on.
-3. Review Iteration 3 results in `results/iter3_bilstm_*/metrics.json`.
-</investigate_before_answering>
+## Grounding
 
-### Task
+Use **superpowers** to read:
+1. `PRD.md` Section 2.4 Iteration 4.
+2. `src/models/single_turn.py` for BiLSTMClassifier base.
+3. `results/iter3_bilstm_*/metrics.json` for comparison targets.
 
-Replace nn.LSTM with nn.GRU. Same architecture otherwise. Compare parameter count, training time, F1.
+Use **goodmem** to read `models.iter3_best_dropout`, `models.iter3_f1_d03`, `models.iter3_f1_d05`.
+
+## Task
+
+Replace nn.LSTM with nn.GRU. Compare parameter count, training time, F1. Make the encoder decision.
 
 **Completion criteria:**
 - Parameter count comparison printed
 - Training time per epoch comparison
 - F1 comparison
-- **Decision documented:** which encoder (LSTM or GRU) to use in Iteration 5 multi-turn model, and why
+- **Decision documented:** LSTM or GRU for Iteration 5 multi-turn model, with reasoning
 
-### Tool Guidance
+## Plugin Usage
 
-- **Sequential-thinking MCP:** Think through LSTM vs GRU tradeoffs before deciding. GRU has fewer parameters (no separate cell state), trains faster, but LSTM has richer memory. For security context that needs to persist across many turns, which matters more?
-- **Goodman plugin:** Persist the encoder decision to agent memory. Iteration 5 depends on this choice.
+**superpowers:** Train GRU variant, measure wall-clock time.
+
+**ralph-loop:**
+1. Build GRU model
+2. Train, measure time and F1
+3. Review: Compare against best Iteration 3 variant on params, speed, F1
+4. Make encoder decision based on evidence
+5. Confirm
+
+**goodmem:** CRITICAL — downstream prompts depend on this. Persist:
+- `models.iter4_f1 = <val>`
+- `models.iter4_params = <count>`
+- `models.encoder_decision = <LSTM or GRU>`
+- `models.encoder_decision_reasoning = <text>`
+- `models.best_single_turn_iteration = <1, 2, 3, or 4>`
+- `models.best_single_turn_f1 = <val>`
+- `models.best_single_turn_path = models/iter<N>_*.pt`
+
+**serena:** Checkpoint — the encoder decision is the single most important architectural choice for Phase E.
 
 **Execution:** `claude --prompt prompts/14_gru_comparison.md --ultrathink`

@@ -13,29 +13,43 @@
 
 ---
 
-## Prompt
+## Role
 
-You are an NLP engineer comparing random vs. pretrained embeddings.
+You are an NLP engineer comparing random vs. pretrained embeddings for security text classification.
 
-<investigate_before_answering>
-1. Read `PRD.md` Section 2.4 Iteration 2.
-2. Read `src/models/single_turn.py` for current SingleTurnLSTM implementation.
-3. Read `data/embeddings/embedding_matrix.npy` shape.
-</investigate_before_answering>
+## Grounding
 
-### Task
+Use **superpowers** to read:
+1. `PRD.md` Section 2.4 Iteration 2.
+2. `src/models/single_turn.py` for current SingleTurnLSTM.
+3. `data/embeddings/embedding_matrix.npy` shape.
 
-Modify SingleTurnLSTM to accept pretrained GloVe embeddings via `nn.Embedding.from_pretrained(matrix, freeze=True)`.
+Use **goodmem** to read `models.iter1_f1`, `data.glove_coverage`, `data.glove_missing_security_terms`, `data.embedding_dim`.
+
+## Task
+
+Modify SingleTurnLSTM to accept pretrained GloVe via `nn.Embedding.from_pretrained(matrix, freeze=True)`.
 
 **Completion criteria:**
-- Embedding dim changes to 100 (GloVe). LSTM input_size adjusted.
+- Embedding dim = 100 (GloVe), LSTM input_size adjusted
 - Same training config as Iteration 1
 - Compare: convergence speed, final F1, training curves side-by-side
-- Report security vocabulary coverage in GloVe
+- Report security vocabulary coverage
 
-### Tool Guidance
+## Plugin Usage
 
-- **Ralph loops:** Train, compare F1 to Iteration 1, verify GloVe embeddings are frozen (no grad updates).
-- **Goodman plugin:** Persist Iteration 2 F1 and GloVe coverage stats.
+**superpowers:** Train and evaluate.
+
+**ralph-loop:**
+1. Modify model to accept pretrained embeddings
+2. Train with GloVe
+3. Review: F1 vs Iteration 1? Convergence faster or slower? Embeddings actually frozen?
+4. Fix if needed
+5. Confirm
+
+**goodmem:** After completion, persist:
+- `models.iter2_f1 = <val>`
+- `models.iter2_convergence_epochs = <N>`
+- `models.glove_vs_random = <better/worse/comparable>`
 
 **Execution:** `claude --prompt prompts/12_lstm_glove.md --ultrathink`

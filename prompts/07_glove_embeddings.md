@@ -4,47 +4,63 @@
 
 **GitHub Issues:** #8 — [Data Pipeline] GloVe download and embedding matrix
 
-**Prerequisites:** Prompt 04 (vocabulary must exist at models/vocab.json)
+**Prerequisites:** Prompt 04 complete (vocabulary exists at models/vocab.json)
 
 **Expected Outputs:**
-- `src/data/download_glove.py` (or extension of download.py)
+- GloVe download script (extend `src/data/download.py` or create `src/data/download_glove.py`)
 - `data/embeddings/glove.6B.100d.txt`
 - `data/embeddings/embedding_matrix.npy`
 
 ---
 
-## Prompt
+## Role
 
 You are an NLP engineer building pretrained embedding integration.
 
-<investigate_before_answering>
-1. Read `PRD.md` Section 2.4 Iteration 2 for GloVe usage requirements.
-2. Read `models/vocab.json` to understand vocab size and word-to-index mapping.
-3. Check `.gitignore` covers data/embeddings/.
-</investigate_before_answering>
+## Grounding
 
-### Task
+Use **superpowers** to read:
+1. `PRD.md` Section 2.4 Iteration 2 for GloVe requirements.
+2. `models/vocab.json` to get vocab size and word-to-index mapping.
+3. Verify `.gitignore` covers `data/embeddings/`.
 
-Download GloVe 6B, extract 100d vectors, build embedding matrix.
+Use **goodmem** to read `data.vocab_size`.
+
+## Task
+
+Download GloVe 6B, extract 100d vectors, build aligned embedding matrix.
 
 **Completion criteria:**
 - Matrix shape: (vocab_size, 100)
 - Row 0 (PAD) = zeros, Row 1 (OOV) = mean of all GloVe vectors
-- Print coverage stats and notable missing security terms
+- Print coverage stats and notable missing security terms ("ignore", "override", "jailbreak", "bypass", "inject", "prompt")
 - Saved to `data/embeddings/embedding_matrix.npy`
 
-### Tool Guidance
+## Plugin Usage
 
-- **Ralph loops:** Download, build matrix, verify shape, check coverage of security terms ("ignore", "override", "jailbreak", "bypass").
+**superpowers:** Download GloVe zip, extract, build matrix, save.
 
-### Verification
+**ralph-loop:**
+1. Generate the download and matrix-building code
+2. Execute it
+3. Review: Matrix shape correct? PAD row zeros? Coverage > 50%? Security terms checked?
+4. Fix any issues
+5. Confirm
+
+**goodmem:** After completion, persist:
+- `data.glove_coverage = <pct>`
+- `data.glove_missing_security_terms = [<list>]`
+- `data.embedding_matrix_path = data/embeddings/embedding_matrix.npy`
+- `data.embedding_dim = 100`
+
+## Verification
 
 ```bash
 python -c "
 import numpy as np
 matrix = np.load('data/embeddings/embedding_matrix.npy')
-print(f'Embedding matrix shape: {matrix.shape}')
-print(f'PAD row (should be zeros): {matrix[0].sum()}')
+print(f'Shape: {matrix.shape}')
+print(f'PAD row sum (should be 0): {matrix[0].sum()}')
 "
 ```
 
