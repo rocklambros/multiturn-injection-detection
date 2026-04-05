@@ -254,7 +254,7 @@ flowchart TD
     end
 
     subgraph "Execution"
-        NB["notebooks/Final_Project.ipynb\n(imports from src/, loads results/)"]
+        NB["notebooks/multiturn_injection_detection.ipynb\n(imports from src/, loads results/)"]
         PR["prompts/\nReproducible build scripts"]
     end
 
@@ -266,7 +266,7 @@ flowchart TD
     subgraph "Deliverables"
         RPT["report/final_report.md\nAcademic report"]
         PRES["report/presentation.md\n10-minute deck"]
-        HTML["notebooks/Final_Project.html\nStatic notebook export"]
+        HTML["notebooks/multiturn_injection_detection.html\nStatic notebook export"]
     end
 
     SRC --> NB
@@ -289,7 +289,7 @@ flowchart TD
 ```
 multiturn-injection-detection/
 ├── notebooks/
-│   └── Final_Project.ipynb     # Complete walkthrough with all results and 24 visualizations
+│   └── multiturn_injection_detection.ipynb     # Complete walkthrough with all results and 24 visualizations
 ├── src/
 │   ├── data/
 │   │   ├── download.py          # Downloads base HuggingFace datasets
@@ -363,7 +363,7 @@ If you're interested in deep learning and NLP, this project covers:
 - **Dual-encoder architectures** — freezing one model and stacking another on top
 - **Synthetic data generation** — creating training data when none exists
 
-The [Jupyter notebook](notebooks/Final_Project.ipynb) walks through every concept with detailed explanations, 24 visualizations, and inline commentary on every code cell.
+The [Jupyter notebook](notebooks/multiturn_injection_detection.ipynb) walks through every concept with detailed explanations, 24 visualizations, and inline commentary on every code cell.
 
 ---
 
@@ -407,7 +407,7 @@ python -m src.data.download
 python -m src.data.download_extra
 
 # Run the full pipeline (or open the notebook)
-jupyter notebook notebooks/Final_Project.ipynb
+jupyter notebook notebooks/multiturn_injection_detection.ipynb
 ```
 
 ---

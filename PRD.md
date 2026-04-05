@@ -474,7 +474,7 @@ File: `src/evaluation/visualization.py`
 ### 5.2 Project Outputs
 
 1. Written report: `report/final_report.md` (export to PDF)
-2. Jupyter notebook: `notebooks/Final_Project.ipynb` (with HTML/PDF export of complete run)
+2. Jupyter notebook: `notebooks/multiturn_injection_detection.ipynb` (with HTML/PDF export of complete run)
 3. Presentation: slide deck
 
 ### 5.3 Notebook Structure
@@ -550,7 +550,7 @@ File: `src/evaluation/visualization.py`
 │       ├── tokenizer.py
 │       └── seed.py
 ├── notebooks/
-│   └── Final_Project.ipynb
+│   └── multiturn_injection_detection.ipynb
 ├── models/                         # Saved weights (gitignored)
 ├── results/                        # Metrics, plots (per iteration)
 └── report/
