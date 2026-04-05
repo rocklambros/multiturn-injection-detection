@@ -1,6 +1,6 @@
 """Transformer-based models for prompt injection detection.
 
-Implements two approaches per instructor feedback:
+Implements two approaches:
 1. Custom small Transformer encoder (controlled comparison with LSTM/GRU)
 2. DistilBERT fine-tuned classifier (transfer learning comparison)
 

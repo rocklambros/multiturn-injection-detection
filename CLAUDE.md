@@ -95,7 +95,7 @@ Downstream prompts MUST read relevant goodmem keys before generating code. The m
 - Never use Kaggle datasets or APIs
 - **All models use PyTorch.** sklearn for baselines only.
 - Every code generation step MUST go through ralph-loop: generate → review → fix → confirm. Never commit unreviewed code.
-- Markdown cells in the notebook must explain WHY, not just WHAT. Zero credit without reasoning.
+- Markdown cells in the notebook must explain WHY, not just WHAT.
 
 ## Hardware Constraints
 

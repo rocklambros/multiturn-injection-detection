@@ -1,7 +1,6 @@
 # Multi-Turn Distributed Prompt Injection Detection
 
 **Author:** Rock Lambros  
-**Course:** COMP 4531: Deep Learning, University of Denver  
 **Date:** April 2026  
 **Platform:** NVIDIA Jetson Orin AGX (64GB RAM, 2048-core Ampere GPU)
 
@@ -29,7 +28,7 @@ This project builds the first multi-turn distributed prompt injection detection 
 
 ### 2.1 Single-Turn Datasets
 
-Eight HuggingFace datasets were merged (expanded from the original three to enable transformer comparison per instructor feedback):
+Eight HuggingFace datasets were merged (expanded from the original three to enable transformer comparison):
 
 | Dataset | Samples | Type |
 |---------|---------|------|
@@ -76,7 +75,7 @@ Following Chollet (Deep Learning with Python, Chapters 11/15), we compute the ra
 
 At ratio 588 (well below 1,500), the Chollet heuristic predicts that **bag-of-bigrams models should outperform sequence and transformer models**. This is because with relatively few samples per unit of text complexity, simpler models with strong feature engineering (TF-IDF bigrams) can capture the discriminative patterns without the overfitting risk inherent in higher-capacity models.
 
-This prediction is empirically validated: TF-IDF + RF (F1=0.834) outperforms all deep learning models including transformers. The instructor's insight is confirmed — transformers need substantially more training data to outperform simpler approaches on this task.
+This prediction is empirically validated: TF-IDF + RF (F1=0.834) outperforms all deep learning models including transformers — confirming that transformers need substantially more training data to outperform simpler approaches on this task.
 
 ---
 
@@ -99,7 +98,7 @@ All use: Adam optimizer, BCELoss, early stopping, ReduceLROnPlateau, gradient cl
 
 ### 3.3 Iterations 4b-4c: Transformer Comparison
 
-Per instructor feedback, we add two transformer architectures to compare against LSTM/GRU:
+We add two transformer architectures to compare against LSTM/GRU:
 
 | Iter | Architecture | Key Feature |
 |------|-------------|-------------|
@@ -144,7 +143,7 @@ Sweep thresholds 0.01-0.99 on the attention model. Optimize for F1, 95% recall, 
 
 **Encoder decision**: GRU — competitive F1 with fewer parameters than BiLSTM.
 
-**Chollet heuristic validated**: TF-IDF + RF (bag-of-bigrams) achieves the highest F1 at 0.834, confirming the Chollet prediction that at ratio 588, simpler models outperform sequence and transformer architectures. The custom transformer (0.808) and DistilBERT (0.806) both underperform the bag-of-bigrams baseline, demonstrating the instructor's point: transformers need substantially more training data to be competitive.
+**Chollet heuristic validated**: TF-IDF + RF (bag-of-bigrams) achieves the highest F1 at 0.834, confirming the Chollet prediction that at ratio 588, simpler models outperform sequence and transformer architectures. The custom transformer (0.808) and DistilBERT (0.806) both underperform the bag-of-bigrams baseline, demonstrating that transformers need substantially more training data to be competitive.
 
 **GloVe finding**: With the expanded dataset, GloVe LSTM (F1=0.813) performs comparably to random embeddings (F1=0.814). The earlier dramatic gap (0.66 vs 0.95 on the smaller dataset) was an artifact of limited data — with more diverse training examples, both embedding approaches converge.
 

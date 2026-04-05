@@ -74,7 +74,7 @@ The multi-turn architecture improves detection by **+10 F1 points** over the bes
 
 ### What About Transformers?
 
-Per instructor guidance, we also compared transformer architectures (the technology behind ChatGPT). Using the **Chollet heuristic** (a rule of thumb from Francois Chollet's *Deep Learning with Python*), we predicted that transformers would underperform simpler models on our dataset — and they did:
+We also compared transformer architectures. Using the **Chollet heuristic** (Chollet, *Deep Learning with Python*), we predicted that transformers would underperform simpler models on our dataset — and they did:
 
 - Custom Transformer: F1 = 0.808
 - DistilBERT (pretrained): F1 = 0.806
@@ -349,7 +349,7 @@ The project follows a progressive iteration plan — each step builds on the las
 
 ## Concepts You'll Learn From This Project
 
-If you're a student or someone learning about deep learning and NLP, this project covers:
+If you're interested in deep learning and NLP, this project covers:
 
 - **Text classification** — turning words into numbers and training models to make predictions
 - **Word embeddings** — learned vs pretrained (GloVe), and when each works better
@@ -422,4 +422,4 @@ jupyter notebook notebooks/Final_Project.ipynb
 
 ---
 
-**Author:** Rock Lambros | **Course:** COMP 4531: Deep Learning | **University of Denver** | April 2026
+**Author:** Rock Lambros | April 2026

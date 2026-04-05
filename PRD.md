@@ -4,14 +4,14 @@ Version: 2.0
 Author: Rock Lambros
 Date: April 1, 2026
 Target Platform: NVIDIA Jetson Orin AGX (64GB RAM, 2048-core Ampere GPU)
-Framework: PyTorch (approved by instructor April 1, 2026)
+Framework: PyTorch
 Python: 3.10+
 
 ---
 
 ## Changelog
 
-- **v2.0 (April 1, 2026):** Merged professor email decisions. PyTorch confirmed. Corrected "solved" language. Added temporal justification, data examples, tensor shapes, expected results. Added Vassilev, Crescendo, FITD citations. Restructured per buildout spec.
+- **v2.0 (April 1, 2026):** PyTorch confirmed. Corrected "solved" language. Added temporal justification, data examples, tensor shapes, expected results. Added Vassilev, Crescendo, FITD citations. Restructured per buildout spec.
 - **v1.0 (March 31, 2026):** Initial PRD (Keras/TensorFlow, since superseded).
 
 ---
@@ -39,9 +39,9 @@ The problem is fundamentally temporal: earlier turns create context that later t
 
 A bag-of-words model or a classifier that scores turns independently will miss these attacks every time because the signal does not exist in any single turn. It exists in how turns relate to each other over time. This is a temporal model at two levels: word-level within each turn (the inner LSTM), and turn-level across the conversation (the outer LSTM).
 
-### 1.4 Academic Context
+### 1.4 Related Work
 
-This project is the final project for COMP 4531: Deep Learning at the University of Denver. It is related to but independent from a theoretical security framework paper the author is co-authoring on threats to long-running AI agent systems (MAESTRO framework analysis). That paper contains no code, no data, and no models. The paper and the project share a problem domain but zero deliverables.
+This project is related to but independent from a theoretical security framework paper the author is co-authoring on threats to long-running AI agent systems (MAESTRO framework analysis). That paper contains no code, no data, and no models. The paper and this project share a problem domain but no artifacts.
 
 ### 1.5 Key References
 
@@ -56,7 +56,7 @@ This project is the final project for COMP 4531: Deep Learning at the University
 
 ### 2.1 Framework Decision
 
-**PyTorch.** Approved by instructor April 1, 2026. The multi-turn architecture requires a dual-encoder with a custom attention layer. PyTorch's explicit forward pass and native handling of variable-length sequences makes this cleaner than Keras TimeDistributed with masking quirks. sklearn is used for baselines only.
+**PyTorch.** The multi-turn architecture requires a dual-encoder with a custom attention layer. PyTorch's explicit forward pass and native handling of variable-length sequences makes this cleaner than Keras TimeDistributed with masking quirks. sklearn is used for baselines only.
 
 ### 2.2 What the Data Looks Like
 
@@ -458,35 +458,24 @@ File: `src/evaluation/visualization.py`
 
 ---
 
-## 5. Deliverables and Timeline
+## 5. Outputs and Timeline
 
 ### 5.1 Timeline
 
-| Date | Deliverable |
+| Date | Milestone |
 |---|---|
 | April 15 | Data acquisition, cleaning, synthetic multi-turn generation |
 | April 22 | Baselines and exploratory data analysis |
 | April 29 | Single-turn LSTM, iterations 1-4 |
 | May 13 | Multi-turn classifier, iterations 5-7 |
-| May 17 | Report and notebook (Restart & Run All clean) |
-| May 20 | 10-minute presentation |
+| May 17 | Report and notebook |
+| May 20 | Presentation |
 
-### 5.2 Graded Deliverables
+### 5.2 Project Outputs
 
-Mapped to course rubric (Text Sequence / RNN-LSTM category):
-
-| Criterion | Weight | Covered by |
-|---|---|---|
-| Problem Statement | 10% | Notebook Section 1, Report Section 1 |
-| Problem Setup | 20% | Notebook Sections 2-3, Report Section 2 |
-| Problem Exploration | 20% | Notebook Sections 2-4, Report Section 3 |
-| NN Implementation | 25% | Notebook Sections 5-10, Report Section 4 |
-| Refining Models | 25% | Notebook Sections 5-12, Report Section 5 |
-
-Three deliverables:
 1. Written report: `report/final_report.md` (export to PDF)
 2. Jupyter notebook: `notebooks/Final_Project.ipynb` (with HTML/PDF export of complete run)
-3. Presentation: 10-minute slide deck
+3. Presentation: slide deck
 
 ### 5.3 Notebook Structure
 
@@ -526,9 +515,8 @@ Three deliverables:
 ```
 .
 ├── PRD.md
-├── CLAUDE.md
 ├── requirements.txt
-├── prompts/                        # Claude Code execution prompts
+├── prompts/                        # Execution prompts
 ├── data/
 │   ├── raw/                        # Downloaded datasets (gitignored)
 │   ├── processed/                  # Cleaned CSVs
@@ -645,5 +633,5 @@ tqdm>=4.65.0
 - Real (non-synthetic) multi-turn attack data
 - Multi-class injection technique classification
 - Production deployment or REST API
-- MAESTRO paper deliverable integration
+- MAESTRO paper integration
 - Model quantization or TFLite/ONNX conversion
