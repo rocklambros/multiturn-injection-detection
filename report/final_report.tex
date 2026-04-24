@@ -56,7 +56,7 @@ The multi-turn attack signal is fundamentally temporal: earlier turns create con
 
 \subsection{Contribution}
 
-This project builds the first multi-turn distributed prompt injection detection system using a dual-encoder architecture: a frozen single-turn encoder paired with a sequence-level LSTM that carries forward context across turns. We demonstrate a \textbf{+10.3 percentage point F1 improvement} over per-turn classification on multi-turn attack data (F1 = 0.989 vs.\ 0.887).
+This project builds a multi-turn distributed prompt injection detection system using a dual-encoder architecture: a frozen single-turn encoder paired with a sequence-level LSTM that carries forward context across turns. We demonstrate a \textbf{+10.3 percentage point F1 improvement} over per-turn classification on multi-turn attack data (F1 = 0.989 vs.\ 0.887).
 
 % ============================================================
 \section{Data and Preprocessing}
@@ -256,7 +256,7 @@ Iter & Architecture & Key Feature & Parameters \\
 
 The custom transformer (Iter 4b) provides a controlled comparison: same vocabulary, same embedding dimension, similar parameter count. The only difference is self-attention vs.\ recurrent gates. DistilBERT (Iter 4c) tests whether pretrained language understanding transfers to the security domain even with a frozen body.
 
-\subsection{Iteration 5: Multi-Turn Classifier (Novel)}
+\subsection{Iteration 5: Multi-Turn Classifier}
 
 Dual-encoder architecture:
 \begin{enumerate}[nosep]
