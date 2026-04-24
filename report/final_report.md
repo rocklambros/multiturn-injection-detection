@@ -20,7 +20,7 @@ The multi-turn attack signal is fundamentally temporal: earlier turns create con
 
 ### 1.3 Contribution
 
-This project builds the first multi-turn distributed prompt injection detection system using a dual-encoder architecture: a frozen single-turn encoder paired with a sequence-level LSTM that carries forward context across turns. We demonstrate a **+19 percentage point F1 improvement** over per-turn classification on multi-turn attack data.
+This project builds the first multi-turn distributed prompt injection detection system using a dual-encoder architecture: a frozen single-turn encoder paired with a sequence-level LSTM that carries forward context across turns. We demonstrate a **+10.3 percentage point F1 improvement** over per-turn classification on multi-turn attack data.
 
 ---
 
@@ -132,6 +132,7 @@ Sweep thresholds 0.01-0.99 on the attention model. Optimize for F1, 95% recall, 
 
 | Model | F1 | Accuracy | ROC-AUC |
 |-------|-----|----------|---------|
+| Stratified random (chance) | 0.358 | 0.540 | 0.500 |
 | TF-IDF + LR (Iter 0) | 0.814 | 0.878 | 0.939 |
 | **TF-IDF + RF (Iter 0)** | **0.834** | **0.890** | **0.945** |
 | LSTM (Iter 1) | 0.814 | 0.877 | 0.942 |
@@ -151,6 +152,7 @@ Sweep thresholds 0.01-0.99 on the attention model. Optimize for F1, 95% recall, 
 
 | Model | Multi-Turn F1 |
 |-------|--------------|
+| Stratified random (chance) | 0.500 |
 | TF-IDF + LR (concatenated) | 0.656 |
 | TF-IDF + RF (concatenated) | 0.739 |
 | GRU per-turn (max prob) | 0.887 |
@@ -160,7 +162,7 @@ Sweep thresholds 0.01-0.99 on the attention model. Optimize for F1, 95% recall, 
 
 **The core finding**: the dual-encoder temporal architecture achieves **F1=0.989-0.995 on multi-turn data**, a **+10.3 percentage point improvement** over the best single-turn model applied per-turn (F1=0.887).
 
-This validates the temporal hypothesis: the sequence-level LSTM carries forward accumulated context across turns, detecting escalation patterns that no individual turn reveals.
+Measured against a stratified random classifier (F1=0.500 on balanced classes), the temporal model captures nearly all available classification signal above chance. This validates the temporal hypothesis: the sequence-level LSTM carries forward accumulated context across turns, detecting escalation patterns that no individual turn reveals.
 
 ### 4.3 Threshold Analysis
 
