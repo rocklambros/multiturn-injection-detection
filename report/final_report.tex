@@ -463,6 +463,17 @@ Training curves across all iterations reveal moderate train-validation gaps that
 \label{fig:convergence}
 \end{figure}
 
+\subsection{Representation Space Analysis}
+
+Figure~\ref{fig:manifold} visualizes the GRU encoder's progressive manifold separation via t-SNE projections of 2,000 test samples at three network stages. The raw embedding space shows substantial class overlap. The bidirectional GRU transforms this into a more separable representation, and the dense projection further refines the clustering. This progressive untangling---analogous to the manifold transformations described by Olah~\cite{olah2014}---is what enables the frozen encoder to serve as an effective feature extractor for the downstream multi-turn classifier.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{../results/embedding_space_manifold.png}
+\caption{t-SNE projections of 2,000 test samples at three stages through the GRU encoder. The progressive separation from intermingled (embedding layer) to clustered (dense encoding) demonstrates the manifold untangling that makes the encoder effective as a frozen feature extractor.}
+\label{fig:manifold}
+\end{figure}
+
 \subsection{AUC Comparison}
 
 \begin{figure}[H]
@@ -519,6 +530,37 @@ The dual-encoder architecture succeeds because it separates two concerns:
 \end{enumerate}
 
 The frozen turn encoder prevents catastrophic forgetting while the sequence LSTM learns to recognize escalation, persona establishment, and cumulative constraint patterns.
+
+\subsection{LSTM Gate Dynamics}
+
+Figure~\ref{fig:gates} visualizes the sequence LSTM's gate activations across conversation turns for a sample attack and benign conversation. The forget, input, and output gates reveal how the model processes temporal context. In the attack conversation, the forget gate maintains high activation, retaining accumulated context as the attack escalates. The input gate shows elevated activation on turns that introduce risk-relevant information. In the benign conversation, gate activations are more uniform, reflecting the absence of escalation patterns.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{../results/gate_activations_heatmap.png}
+\caption{Mean LSTM gate activations (averaged over 64 hidden units) across conversation turns. Left: an attack conversation with elevated input gate activity on escalation turns. Right: a benign conversation with more uniform gate dynamics.}
+\label{fig:gates}
+\end{figure}
+
+\subsection{Loss Landscape Analysis}
+
+Following the technique of Li et al.~\cite{li2018landscape}, Figure~\ref{fig:landscape} visualizes the loss surface of the multi-turn attention model. Two random directions in the 29,281-dimensional trainable parameter space were sampled with filter-wise normalization, and BCE loss was evaluated on a $25 \times 25$ grid. The frozen turn encoder outputs were pre-computed, so only the sequence LSTM, attention, and classification head were perturbed.
+
+The smooth, bowl-shaped landscape indicates the optimizer found a well-conditioned minimum. The approximately circular contours (Figure~\ref{fig:landscape_contour}) suggest isotropic curvature near the minimum, meaning the model is not in a narrow, overfitting-prone valley but rather a broad basin of good solutions.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{../results/loss_landscape_3d.png}
+\caption{3D loss landscape of the multi-turn attention model ($\sim$29K trainable parameters). The smooth bowl shape indicates a well-conditioned minimum. The red star marks the trained parameters.}
+\label{fig:landscape}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.6\textwidth]{../results/loss_landscape_contour.png}
+\caption{Contour view of the loss landscape. Approximately circular contours indicate isotropic curvature near the minimum.}
+\label{fig:landscape_contour}
+\end{figure}
 
 \subsection{Iterative Refinement Summary}
 
@@ -623,6 +665,12 @@ F.~Perez and I.~Ribas. Ignore this title and HackAPrompt: Exposing systemic weak
 
 \bibitem{greshake2023}
 K.~Greshake, S.~Abdelnabi, S.~Mishra, C.~Endres, T.~Holz, and M.~Fritz. Not what you've signed up for: Compromising real-world LLM-integrated applications with indirect prompt injection. In \textit{Proceedings of AISec Workshop at CCS}, 2023.
+
+\bibitem{olah2014}
+C.~Olah. Neural networks, manifolds, and topology. \textit{colah's blog}, 2014. \url{https://colah.github.io/posts/2014-03-NN-Manifolds-Topology/}.
+
+\bibitem{li2018landscape}
+H.~Li, Z.~Xu, G.~Taylor, C.~Studer, and T.~Goldstein. Visualizing the loss landscape of neural nets. In \textit{Advances in Neural Information Processing Systems}, 2018.
 
 \end{thebibliography}
 
