@@ -124,6 +124,41 @@ Turn N → [GRU Turn Encoder] → 32-dim vector ─┘
 
 ---
 
+## Slide 7b: Manifold Separation and Gate Dynamics
+
+### How the GRU Encoder Transforms Input
+
+*(Show embedding_space_manifold.png)*
+
+- t-SNE of 2,000 test samples at 3 network stages
+- **Embedding layer**: classes intermingled
+- **GRU hidden state**: partial separation
+- **Dense encoding**: clear clustering
+- Progressive "manifold untangling" (Olah, 2014)
+
+### LSTM Gate Dynamics
+
+*(Show gate_activations_heatmap.png)*
+
+- Forget gate stays high during attacks: retains accumulated context
+- Input gate spikes on escalation turns
+- Benign conversations show uniform gate patterns
+
+---
+
+## Slide 7c: Loss Landscape
+
+### Optimization Surface Geometry (Li et al. 2018)
+
+*(Show loss_landscape_3d.png)*
+
+- 25x25 grid scan along 2 random parameter-space directions
+- ~29K trainable params (frozen encoder excluded)
+- Smooth bowl shape: well-conditioned minimum
+- Circular contours: isotropic curvature, no narrow valleys
+
+---
+
 ## Slide 8: Attention Visualization
 
 ### Where Does the Model Look?
