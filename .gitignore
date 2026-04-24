@@ -24,6 +24,14 @@ Thumbs.db
 .vscode/
 .idea/
 
+# LaTeX build artifacts
+report/*.aux
+report/*.log
+report/*.out
+report/*.toc
+report/*.bbl
+report/*.blg
+
 # Claude
 CLAUDE.md
 prompts/
