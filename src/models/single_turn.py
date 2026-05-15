@@ -3,9 +3,6 @@
 Iterations 1-4 from PRD Section 2.4.
 """
 
-from src.utils.seed import set_global_seed
-set_global_seed(42)
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

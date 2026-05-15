@@ -5,9 +5,6 @@ The turn encoder processes each turn independently.
 The sequence LSTM processes the sequence of turn encodings over time.
 """
 
-from src.utils.seed import set_global_seed
-set_global_seed(42)
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -64,8 +61,6 @@ class MultiTurnClassifier(nn.Module):
             turn_encodings.append(encoding)
 
         turn_encodings = torch.stack(turn_encodings, dim=1)  # (batch, max_turns, encoding_dim)
-        print(f"    [Shape] Turn encodings: {turn_encodings.shape}") if not hasattr(self, '_logged') else None
-        self._logged = True
 
         # Zero out padded turn encodings so they do not corrupt LSTM recurrent state
         turn_encodings = turn_encodings * mask.unsqueeze(-1)

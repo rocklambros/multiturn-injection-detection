@@ -5,9 +5,6 @@ Iteration 6: Multi-turn with attention
 Iteration 7: Threshold tuning
 """
 
-from src.utils.seed import set_global_seed
-set_global_seed(42)
-
 import json
 import os
 import time

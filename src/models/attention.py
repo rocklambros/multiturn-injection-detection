@@ -4,9 +4,6 @@ Adds attention over LSTM hidden states to identify which turns
 contribute most to the classification decision.
 """
 
-from src.utils.seed import set_global_seed
-set_global_seed(42)
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

@@ -7,9 +7,6 @@ Implements four attack strategies per PRD Section 3.3:
 - Instruction layering (10%): cumulative constraint override
 """
 
-from src.utils.seed import set_global_seed
-set_global_seed(42)
-
 import json
 import os
 import random

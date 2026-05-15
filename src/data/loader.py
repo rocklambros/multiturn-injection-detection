@@ -4,9 +4,6 @@ Single-turn shape: (batch_size, 256)
 Multi-turn shape: (batch_size, 10, 256) with mask (batch_size, 10)
 """
 
-from src.utils.seed import set_global_seed
-set_global_seed(42)
-
 import json
 from pathlib import Path
 
