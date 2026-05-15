@@ -379,24 +379,83 @@ def analyze_attention(model, test_loader, test_data, device, iteration_name):
             )
 
 
-def run_iteration_7(model, test_loader, device):
+def run_iteration_7(model, val_loader, test_loader, device):
     """Iteration 7: Threshold tuning on the best multi-turn model.
+
+    Thresholds are swept on the validation set to select the optimal
+    operating point. The chosen threshold is then applied exactly once
+    to the test set to produce the final reported metrics, preventing
+    data leakage from threshold selection.
 
     Args:
         model: Best trained multi-turn model.
-        test_loader: Test DataLoader.
+        val_loader: Validation DataLoader used for threshold sweeping.
+        test_loader: Test DataLoader evaluated once with the chosen threshold.
         device: torch.device.
 
     Returns:
-        Dict with best thresholds and metrics at each.
+        Dict with best thresholds (chosen on val) and final test metrics.
     """
     print(f"\n{'#'*60}")
     print("ITERATION 7: Threshold Tuning")
     print(f"{'#'*60}")
 
+    from sklearn.metrics import f1_score, precision_score, recall_score
+
+    # --- Sweep thresholds on validation set ---
+    print("\nSweeping thresholds on validation set...")
     model.eval()
-    all_probs = []
-    all_labels = []
+    val_probs = []
+    val_labels = []
+
+    with torch.no_grad():
+        for inputs, mask, labels in val_loader:
+            inputs = inputs.to(device)
+            mask = mask.to(device)
+            logits = model(inputs, mask)
+            probs = torch.sigmoid(logits).squeeze().cpu().numpy()
+            val_probs.extend(probs.tolist() if hasattr(probs, 'tolist') else [probs])
+            val_labels.extend(labels.numpy().tolist())
+
+    y_val_true = np.array(val_labels)
+    y_val_prob = np.array(val_probs)
+
+    thresholds = np.arange(0.01, 1.00, 0.01)
+    val_results = []
+
+    for thresh in thresholds:
+        y_pred = (y_val_prob >= thresh).astype(int)
+        f1 = f1_score(y_val_true, y_pred, zero_division=0)
+        prec = precision_score(y_val_true, y_pred, zero_division=0)
+        rec = recall_score(y_val_true, y_pred, zero_division=0)
+        val_results.append({"threshold": float(thresh), "f1": f1, "precision": prec, "recall": rec})
+
+    # Select best thresholds from validation sweep
+    best_f1_entry = max(val_results, key=lambda r: r["f1"])
+    recall_95 = [r for r in val_results if r["recall"] >= 0.95]
+    precision_95 = [r for r in val_results if r["precision"] >= 0.95]
+
+    best_recall_95 = max(recall_95, key=lambda r: r["f1"]) if recall_95 else None
+    best_precision_95 = max(precision_95, key=lambda r: r["f1"]) if precision_95 else None
+
+    print(f"\nVal — Threshold maximizing F1: {best_f1_entry['threshold']:.2f}")
+    print(f"  F1={best_f1_entry['f1']:.4f}, Precision={best_f1_entry['precision']:.4f}, Recall={best_f1_entry['recall']:.4f}")
+
+    if best_recall_95:
+        print(f"\nVal — Threshold achieving 95% recall: {best_recall_95['threshold']:.2f}")
+        print(f"  F1={best_recall_95['f1']:.4f}, Precision={best_recall_95['precision']:.4f}, Recall={best_recall_95['recall']:.4f}")
+
+    if best_precision_95:
+        print(f"\nVal — Threshold achieving 95% precision: {best_precision_95['threshold']:.2f}")
+        print(f"  F1={best_precision_95['f1']:.4f}, Precision={best_precision_95['precision']:.4f}, Recall={best_precision_95['recall']:.4f}")
+
+    print(f"\nSecurity reasoning: missed injections (FN) cost more than false alarms (FP).")
+    print(f"Recommend threshold for 95% recall: {best_recall_95['threshold']:.2f}" if best_recall_95 else "No threshold achieves 95% recall.")
+
+    # --- Evaluate once on test set with the chosen threshold ---
+    print(f"\nEvaluating on test set with chosen threshold ({best_f1_entry['threshold']:.2f})...")
+    test_probs = []
+    test_labels = []
 
     with torch.no_grad():
         for inputs, mask, labels in test_loader:
@@ -404,70 +463,34 @@ def run_iteration_7(model, test_loader, device):
             mask = mask.to(device)
             logits = model(inputs, mask)
             probs = torch.sigmoid(logits).squeeze().cpu().numpy()
-            all_probs.extend(probs.tolist() if hasattr(probs, 'tolist') else [probs])
-            all_labels.extend(labels.numpy().tolist())
+            test_probs.extend(probs.tolist() if hasattr(probs, 'tolist') else [probs])
+            test_labels.extend(labels.numpy().tolist())
 
-    y_true = np.array(all_labels)
-    y_prob = np.array(all_probs)
-
-    # Sweep thresholds
-    thresholds = np.arange(0.01, 1.00, 0.01)
-    results = []
-
-    from sklearn.metrics import f1_score, precision_score, recall_score
-
-    for thresh in thresholds:
-        y_pred = (y_prob >= thresh).astype(int)
-        f1 = f1_score(y_true, y_pred, zero_division=0)
-        prec = precision_score(y_true, y_pred, zero_division=0)
-        rec = recall_score(y_true, y_pred, zero_division=0)
-        results.append({"threshold": float(thresh), "f1": f1, "precision": prec, "recall": rec})
-
-    # Find best thresholds
-    best_f1_entry = max(results, key=lambda r: r["f1"])
-    recall_95 = [r for r in results if r["recall"] >= 0.95]
-    precision_95 = [r for r in results if r["precision"] >= 0.95]
-
-    best_recall_95 = max(recall_95, key=lambda r: r["f1"]) if recall_95 else None
-    best_precision_95 = max(precision_95, key=lambda r: r["f1"]) if precision_95 else None
-
-    print(f"\nThreshold maximizing F1: {best_f1_entry['threshold']:.2f}")
-    print(f"  F1={best_f1_entry['f1']:.4f}, Precision={best_f1_entry['precision']:.4f}, Recall={best_f1_entry['recall']:.4f}")
-
-    if best_recall_95:
-        print(f"\nThreshold achieving 95% recall: {best_recall_95['threshold']:.2f}")
-        print(f"  F1={best_recall_95['f1']:.4f}, Precision={best_recall_95['precision']:.4f}, Recall={best_recall_95['recall']:.4f}")
-
-    if best_precision_95:
-        print(f"\nThreshold achieving 95% precision: {best_precision_95['threshold']:.2f}")
-        print(f"  F1={best_precision_95['f1']:.4f}, Precision={best_precision_95['precision']:.4f}, Recall={best_precision_95['recall']:.4f}")
-
-    print(f"\nSecurity reasoning: missed injections (FN) cost more than false alarms (FP).")
-    print(f"Recommend threshold for 95% recall: {best_recall_95['threshold']:.2f}" if best_recall_95 else "No threshold achieves 95% recall.")
-
-    # Save with tuned threshold
+    y_true = np.array(test_labels)
+    y_prob = np.array(test_probs)
     y_pred_tuned = (y_prob >= best_f1_entry["threshold"]).astype(int)
+
     tuned_metrics = compute_metrics(y_true, y_pred_tuned, y_prob)
     tuned_metrics["best_threshold"] = best_f1_entry["threshold"]
-    tuned_metrics["threshold_sweep"] = results
+    tuned_metrics["threshold_sweep"] = val_results
     save_metrics(tuned_metrics, "iter7_threshold")
 
     plot_confusion_matrix(y_true, y_pred_tuned, "iter7_threshold")
 
-    # Save threshold curve
+    # Save threshold curve (based on validation sweep)
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
     fig, ax = plt.subplots(figsize=(10, 6))
-    threshs = [r["threshold"] for r in results]
-    ax.plot(threshs, [r["f1"] for r in results], label="F1", linewidth=2)
-    ax.plot(threshs, [r["precision"] for r in results], label="Precision", linewidth=1, alpha=0.7)
-    ax.plot(threshs, [r["recall"] for r in results], label="Recall", linewidth=1, alpha=0.7)
+    threshs = [r["threshold"] for r in val_results]
+    ax.plot(threshs, [r["f1"] for r in val_results], label="F1 (val)", linewidth=2)
+    ax.plot(threshs, [r["precision"] for r in val_results], label="Precision (val)", linewidth=1, alpha=0.7)
+    ax.plot(threshs, [r["recall"] for r in val_results], label="Recall (val)", linewidth=1, alpha=0.7)
     ax.axvline(x=best_f1_entry["threshold"], color="red", linestyle="--", label=f"Best F1 ({best_f1_entry['threshold']:.2f})")
     ax.set_xlabel("Threshold")
     ax.set_ylabel("Score")
-    ax.set_title("Threshold Tuning — Iteration 7")
+    ax.set_title("Threshold Tuning — Iteration 7 (validation sweep)")
     ax.legend()
     ax.grid(True, alpha=0.3)
 
@@ -517,7 +540,7 @@ def run_all():
 
     # Iteration 7: Threshold tuning (on best of iter5/iter6)
     best_model = attention_model  # Use attention model for threshold tuning
-    threshold_results = run_iteration_7(best_model, test_loader, device)
+    threshold_results = run_iteration_7(best_model, val_loader, test_loader, device)
 
     # Core finding: F1 gap
     st_on_mt_f1 = st_mt_metrics["f1"]
