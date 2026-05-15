@@ -18,7 +18,7 @@ def test_gate_rejects_high_scoring_turn():
             batch_size = x.shape[0]
             return torch.full((batch_size, 1), score)
 
-    encoder = MockEncoder(scores=[0.1, 0.2, 0.8, 0.1, 0.3])
+    encoder = MockEncoder(scores=[-2.0, -1.5, 2.0, -2.0, -1.0])
     gate = ValidationGate(encoder=encoder, threshold=0.5, device=torch.device("cpu"))
 
     turns = ["hello", "how are you", "INJECT HERE", "thanks", "bye"]
@@ -44,7 +44,7 @@ def test_gate_accepts_clean_sequence():
             batch_size = x.shape[0]
             return torch.full((batch_size, 1), score)
 
-    encoder = MockEncoder(scores=[0.1, 0.2, 0.3, 0.1, 0.2])
+    encoder = MockEncoder(scores=[-2.0, -1.5, -1.0, -2.0, -1.5])
     gate = ValidationGate(encoder=encoder, threshold=0.5, device=torch.device("cpu"))
 
     turns = ["hello", "how are you", "what is python", "thanks", "bye"]
