@@ -8,11 +8,7 @@ import json
 import sys
 from pathlib import Path
 
-import numpy as np
-
 sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from src.evaluation.bootstrap import compute_all_cis, paired_bootstrap_test
 
 
 def compile_results(results_dir):

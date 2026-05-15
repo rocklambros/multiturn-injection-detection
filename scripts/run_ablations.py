@@ -5,24 +5,18 @@ Usage:
 """
 
 import argparse
-import json
 import sys
 from pathlib import Path
 
 import numpy as np
 import torch
-import torch.nn as nn
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.utils.seed import set_global_seed
 from src.utils.tokenizer import load_vocab
 from src.models.run_multi_turn import load_encoder_decision, load_turn_encoder, load_multiturn_data
-from src.models.ablations import (
-    MeanPoolClassifier, MaxPoolClassifier, LearnedWeightedMeanClassifier,
-    TurnLevelVoting,
-)
-from src.training.train import train_model
+from src.models.ablations import TurnLevelVoting
 from src.evaluation.metrics import compute_metrics, save_metrics
 from src.evaluation.bootstrap import bootstrap_ci
 

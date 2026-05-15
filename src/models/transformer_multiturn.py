@@ -26,6 +26,7 @@ class HierarchicalDistilBERT(nn.Module):
                  max_turns=10, dropout_rate=0.3, freeze_bert=True):
         super().__init__()
         self.max_turns = max_turns
+        self.freeze_bert = freeze_bert
         self.bert = DistilBertModel.from_pretrained("distilbert-base-uncased")
 
         if freeze_bert:
@@ -62,11 +63,12 @@ class HierarchicalDistilBERT(nn.Module):
         batch_size, max_turns, seq_len = input_ids.shape
         cls_tokens = []
 
+        ctx = torch.no_grad if self.freeze_bert else torch.enable_grad
         for t in range(max_turns):
             turn_ids = input_ids[:, t, :]
             turn_attn = attention_mask[:, t, :]
 
-            with torch.no_grad() if not any(p.requires_grad for p in self.bert.parameters()) else torch.enable_grad():
+            with ctx():
                 outputs = self.bert(input_ids=turn_ids, attention_mask=turn_attn)
 
             cls_tokens.append(outputs.last_hidden_state[:, 0, :])

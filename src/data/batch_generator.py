@@ -187,7 +187,6 @@ async def generate_batch(intents, strategies, difficulty, num_turns_range,
 
     client = anthropic.AsyncAnthropic()
     semaphore = asyncio.Semaphore(max_concurrent)
-    results = []
     errors = 0
 
     async def limited_generate(intent, strategy):

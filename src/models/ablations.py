@@ -10,7 +10,6 @@ A10: Turn-level voting baselines
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
 
 
 # ─── A1: Matched-Capacity Pooling ───────────────────────────────
@@ -187,7 +186,7 @@ class TurnLevelVoting:
         scores_masked = scores.clone()
         scores_masked[mask == 0] = float('-inf')
         topk_scores = scores_masked.topk(min(k, scores.shape[1]), dim=1)[0]
-        topk_scores[topk_scores == float('-inf')] = 0
-        valid_k = (topk_scores > 0).sum(dim=1).clamp(min=1).float()
+        valid_k = (topk_scores > float('-inf')).sum(dim=1).clamp(min=1).float()
+        topk_scores = topk_scores.clamp(min=0)
         mean_topk = topk_scores.sum(dim=1) / valid_k
         return (mean_topk >= threshold).long(), mean_topk

@@ -206,9 +206,9 @@ async def main(args):
             # Load attack sequences for this tier/split
             attack_path = output_dir / f"llm_{tier}_{split}_attacks.jsonl"
             if tier in ("hard", "adversarial"):
-                stripped = output_dir / f"llm_{tier}_{split}_attacks_stripped.jsonl"
-                if stripped.exists():
-                    attack_path = stripped
+                stripped_path = output_dir / f"llm_{tier}_{split}_attacks_stripped.jsonl"
+                if stripped_path.exists():
+                    attack_path = stripped_path
             if attack_path.exists():
                 sequences = []
                 with open(attack_path) as f:
@@ -243,9 +243,9 @@ async def main(args):
         for tier in ["easy", "medium", "hard", "adversarial"]:
             attack_path = output_dir / f"llm_{tier}_{split}_attacks.jsonl"
             if tier in ("hard", "adversarial"):
-                stripped = output_dir / f"llm_{tier}_{split}_attacks_stripped.jsonl"
-                if stripped.exists():
-                    attack_path = stripped
+                stripped_path = output_dir / f"llm_{tier}_{split}_attacks_stripped.jsonl"
+                if stripped_path.exists():
+                    attack_path = stripped_path
             if attack_path.exists():
                 with open(attack_path) as f:
                     for line in f:
@@ -295,7 +295,7 @@ async def main(args):
 
     print("\nData generation complete!")
     print(f"Output: {output_dir}")
-    print(f"Final files: multiturn_{{train,val,test}}.json")
+    print("Final files: multiturn_{train,val,test}.json")
 
 
 if __name__ == "__main__":

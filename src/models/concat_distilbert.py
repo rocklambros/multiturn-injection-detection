@@ -5,7 +5,6 @@ sequence through DistilBERT. Known limitation: 512-token context
 limit truncates most multi-turn conversations.
 """
 
-import torch
 import torch.nn as nn
 from transformers import DistilBertModel
 

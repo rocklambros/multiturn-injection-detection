@@ -5,7 +5,6 @@ Multi-turn shape: (batch_size, 10, 256) with mask (batch_size, 10)
 """
 
 import json
-from pathlib import Path
 
 import pandas as pd
 import torch

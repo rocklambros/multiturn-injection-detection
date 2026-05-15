@@ -5,8 +5,6 @@ import json
 import random
 from pathlib import Path
 
-import pandas as pd
-
 
 def partition_source_texts(df, output_dir, seed=42, train_ratio=0.70, val_ratio=0.15):
     """Partition all source texts into non-overlapping train/val/test pools.
@@ -22,7 +20,6 @@ def partition_source_texts(df, output_dir, seed=42, train_ratio=0.70, val_ratio=
         Dict manifest with pool assignments and SHA-256 hashes.
     """
     random.seed(seed)
-    test_ratio = 1.0 - train_ratio - val_ratio
 
     manifest = {
         "injection_pools": {"train": [], "val": [], "test": []},
