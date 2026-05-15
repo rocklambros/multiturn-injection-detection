@@ -192,44 +192,51 @@ async def main(args):
                 print(f"  Stripped {tier}/{split}: {len(stripped)} sequences")
 
     # Step 7: Run validation gate on all generated sequences
-    print("\nRunning validation gate...")
-    from src.data.validation_gate import ValidationGate
-    gate = ValidationGate(
-        model_path="models/v2_gru_retrain_best.pt",
-        vocab_path="models/vocab.json",
-    )
-    gate_stats = {"passed": 0, "failed": 0, "by_tier": {}}
-    for tier in ["easy", "medium", "hard", "adversarial"]:
-        tier_pass, tier_fail = 0, 0
-        threshold = 0.3 if tier == "adversarial" else 0.5
-        for split in ["val", "test"]:  # gate val/test only (train keeps all)
-            # Load attack sequences for this tier/split
-            attack_path = output_dir / f"llm_{tier}_{split}_attacks.jsonl"
-            if tier in ("hard", "adversarial"):
-                stripped_path = output_dir / f"llm_{tier}_{split}_attacks_stripped.jsonl"
-                if stripped_path.exists():
-                    attack_path = stripped_path
-            if attack_path.exists():
-                sequences = []
-                with open(attack_path) as f:
-                    for line in f:
-                        seq = json.loads(line)
-                        if "error" not in seq:
-                            sequences.append(seq)
-                passed, failed = gate.filter_sequences(
-                    sequences, threshold=threshold,
-                )
-                tier_pass += len(passed)
-                tier_fail += len(failed)
-                # Write back only passed sequences
-                with open(attack_path, "w") as f:
-                    for seq in passed:
-                        f.write(json.dumps(seq) + "\n")
-        gate_stats["by_tier"][tier] = {"passed": tier_pass, "failed": tier_fail}
-        gate_stats["passed"] += tier_pass
-        gate_stats["failed"] += tier_fail
-        rate = tier_pass / max(1, tier_pass + tier_fail) * 100
-        print(f"  {tier}: {tier_pass} passed, {tier_fail} rejected ({rate:.1f}% pass)")
+    gate_model_path = Path("models/v2_gru_retrain_best.pt")
+    skip_gate = args.template_only or args.skip_gate or not gate_model_path.exists()
+    gate_stats = {"passed": 0, "failed": 0, "by_tier": {}, "skipped": skip_gate}
+    if skip_gate:
+        reason = "template-only mode" if args.template_only else (
+            "--skip-gate" if args.skip_gate else f"{gate_model_path} not found"
+        )
+        print(f"\nSkipping validation gate ({reason})")
+    else:
+        print("\nRunning validation gate...")
+        from src.data.validation_gate import ValidationGate
+        gate = ValidationGate(
+            model_path=str(gate_model_path),
+            vocab_path="models/vocab.json",
+        )
+    if not skip_gate:
+        for tier in ["easy", "medium", "hard", "adversarial"]:
+            tier_pass, tier_fail = 0, 0
+            threshold = 0.3 if tier == "adversarial" else 0.5
+            for split in ["val", "test"]:
+                attack_path = output_dir / f"llm_{tier}_{split}_attacks.jsonl"
+                if tier in ("hard", "adversarial"):
+                    stripped_path = output_dir / f"llm_{tier}_{split}_attacks_stripped.jsonl"
+                    if stripped_path.exists():
+                        attack_path = stripped_path
+                if attack_path.exists():
+                    sequences = []
+                    with open(attack_path) as f:
+                        for line in f:
+                            seq = json.loads(line)
+                            if "error" not in seq:
+                                sequences.append(seq)
+                    passed, failed = gate.filter_sequences(
+                        sequences, threshold=threshold,
+                    )
+                    tier_pass += len(passed)
+                    tier_fail += len(failed)
+                    with open(attack_path, "w") as f:
+                        for seq in passed:
+                            f.write(json.dumps(seq) + "\n")
+            gate_stats["by_tier"][tier] = {"passed": tier_pass, "failed": tier_fail}
+            gate_stats["passed"] += tier_pass
+            gate_stats["failed"] += tier_fail
+            rate = tier_pass / max(1, tier_pass + tier_fail) * 100
+            print(f"  {tier}: {tier_pass} passed, {tier_fail} rejected ({rate:.1f}% pass)")
 
     with open(output_dir / "gate_stats.json", "w") as f:
         json.dump(gate_stats, f, indent=2)
@@ -304,5 +311,7 @@ if __name__ == "__main__":
     parser.add_argument("--max-concurrent", type=int, default=50)
     parser.add_argument("--template-only", action="store_true",
                         help="Only generate template-based data (no API calls)")
+    parser.add_argument("--skip-gate", action="store_true",
+                        help="Skip validation gate (auto-skipped if model missing)")
     args = parser.parse_args()
     asyncio.run(main(args))
