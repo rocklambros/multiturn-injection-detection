@@ -109,6 +109,9 @@ class MultiTurnAttentionClassifier(nn.Module):
 
         turn_encodings = torch.stack(turn_encodings, dim=1)  # (batch, max_turns, encoding_dim)
 
+        # Zero out padded turn encodings so they do not corrupt LSTM recurrent state
+        turn_encodings = turn_encodings * mask.unsqueeze(-1)
+
         # Sequence LSTM — use full output for attention
         lstm_out, _ = self.sequence_lstm(turn_encodings)  # (batch, max_turns, hidden_dim)
 

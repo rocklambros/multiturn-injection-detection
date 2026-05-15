@@ -67,6 +67,9 @@ class MultiTurnClassifier(nn.Module):
         print(f"    [Shape] Turn encodings: {turn_encodings.shape}") if not hasattr(self, '_logged') else None
         self._logged = True
 
+        # Zero out padded turn encodings so they do not corrupt LSTM recurrent state
+        turn_encodings = turn_encodings * mask.unsqueeze(-1)
+
         # Sequence-level LSTM
         lstm_out, (hidden, _) = self.sequence_lstm(turn_encodings)
         out = self.dropout(F.relu(self.fc1(hidden.squeeze(0))))
