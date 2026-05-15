@@ -3,12 +3,16 @@ data/raw/
 data/embeddings/
 data/processed/*.csv
 data/synthetic/*.json
+data/synthetic_v2/
 
 # Model weights (top-level only, not src/models/)
 /models/
 
 # Results (regenerated from notebook, top-level only)
 /results/
+
+# Secrets
+.env
 
 # Python
 __pycache__/
