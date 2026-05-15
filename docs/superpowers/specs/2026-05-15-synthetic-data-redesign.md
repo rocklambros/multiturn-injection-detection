@@ -287,10 +287,12 @@ Each RunPod instance is bootstrapped with:
 
 | Item | Estimated Cost |
 |------|---------------|
-| Sonnet 4.6 API (~29K LLM sequences, all tiers) | $75-150 |
+| Sonnet 4.6 API (~29K LLM sequences, all tiers, $3/$15 per MTok in/out) | $400-500 |
 | RunPod GPU (5x A100, ~4 hours total) | $30-60 |
 | WandB | Free tier |
-| **Total** | **$105-210** |
+| **Total** | **$430-560** |
+
+**Generation time estimate:** ~1.5-3 hours with 50 concurrent requests at Tier 3/4 rate limits. No Batch API — real-time parallel generation for speed.
 
 **M3: Report compute costs in paper.** Include total API cost, total GPU-hours, and per-phase breakdown in the paper's reproducibility section. Reviewers increasingly expect this.
 
@@ -338,7 +340,7 @@ The fix is successful if:
 ### Phase 1: Data Generation Infrastructure (sequential, then parallel)
 - T1.1: Create source text partitioner with manifest generation
 - T1.2: Design + test LLM generation prompts (50 samples per strategy x 4 tiers)
-- T1.3: Build async batch generation pipeline (5 workers)
+- T1.3: Build async batch generation pipeline (50 concurrent workers)
 - T1.4: Redesign template-based synthetic.py (fragment-all, no raw injection)
 - T1.5: Build validation gate (single-turn classifier on every turn)
 - T1.6: Build generation manifest + reproducibility tracking
