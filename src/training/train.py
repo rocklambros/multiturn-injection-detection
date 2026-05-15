@@ -9,6 +9,12 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 
+try:
+    import wandb
+    HAS_WANDB = True
+except ImportError:
+    HAS_WANDB = False
+
 
 def compute_accuracy(outputs, targets):
     """Compute binary classification accuracy.
@@ -116,6 +122,9 @@ def train_one_epoch(model, train_loader, optimizer, criterion, device):
         # Gradient clipping
         grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
 
+        if HAS_WANDB and wandb.run is not None and batch_idx % 50 == 0:
+            wandb.log({"batch_grad_norm": grad_norm.item()})
+
         optimizer.step()
 
         running_loss += loss.item() * inputs.size(0)
@@ -182,7 +191,7 @@ def validate(model, val_loader, criterion, device):
 
 
 def train_model(model, train_loader, val_loader, epochs, iteration_name,
-                optimizer, criterion, device, patience=3):
+                optimizer, criterion, device, patience=3, wandb_config=None):
     """Train a PyTorch model with early stopping, LR scheduling, and checkpointing.
 
     Args:
@@ -195,6 +204,8 @@ def train_model(model, train_loader, val_loader, epochs, iteration_name,
         criterion: Loss function (typically BCEWithLogitsLoss).
         device: torch.device ('cuda' or 'cpu').
         patience: Early stopping patience (default 3).
+        wandb_config: Optional dict to enable WandB logging. Keys: 'project',
+            'group', 'tags'. If None, WandB logging is skipped.
 
     Returns:
         dict: Training history with keys 'train_loss', 'val_loss', 'train_acc', 'val_acc'
@@ -227,6 +238,23 @@ def train_model(model, train_loader, val_loader, epochs, iteration_name,
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, factor=0.5, patience=2, min_lr=1e-6
     )
+
+    # WandB initialization
+    if HAS_WANDB and wandb_config is not None:
+        wandb.init(
+            project=wandb_config.get("project", "multiturn-injection-detection-v2"),
+            name=iteration_name,
+            group=wandb_config.get("group", "training"),
+            config={
+                "iteration": iteration_name,
+                "epochs": epochs,
+                "patience": patience,
+                "lr": optimizer.param_groups[0]["lr"],
+                "model_params": sum(p.numel() for p in model.parameters()),
+                "trainable_params": sum(p.numel() for p in model.parameters() if p.requires_grad),
+            },
+            tags=wandb_config.get("tags", []),
+        )
 
     # Early stopping state
     best_val_loss = float("inf")
@@ -261,6 +289,16 @@ def train_model(model, train_loader, val_loader, epochs, iteration_name,
         history["train_acc"].append(train_acc)
         history["val_acc"].append(val_acc)
 
+        if HAS_WANDB and wandb.run is not None:
+            wandb.log({
+                "epoch": epoch,
+                "train_loss": train_loss,
+                "val_loss": val_loss,
+                "train_acc": train_acc,
+                "val_acc": val_acc,
+                "lr": optimizer.param_groups[0]["lr"],
+            })
+
         elapsed = time.time() - epoch_start
         print(f"  Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.4f}")
         print(f"  Val   Loss: {val_loss:.4f} | Val   Acc: {val_acc:.4f}")
@@ -290,5 +328,8 @@ def train_model(model, train_loader, val_loader, epochs, iteration_name,
     with open(history_path, "w") as f:
         json.dump(history, f, indent=2)
     print(f"[INFO] Training history saved to {history_path}")
+
+    if HAS_WANDB and wandb.run is not None:
+        wandb.finish()
 
     return history
