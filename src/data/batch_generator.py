@@ -115,7 +115,7 @@ Output ONLY the JSON array, no other text."""
     return prompt
 
 
-async def generate_one(client, intent, strategy, difficulty, num_turns, model="claude-sonnet-4-6-20250514"):
+async def generate_one(client, intent, strategy, difficulty, num_turns, model="claude-4-sonnet-20250514"):
     """Generate a single conversation via the Anthropic API.
 
     Args:
@@ -132,42 +132,58 @@ async def generate_one(client, intent, strategy, difficulty, num_turns, model="c
     prompt = build_prompt(intent, strategy, difficulty, num_turns)
     diff_config = DIFFICULTY_MODIFIERS[difficulty]
 
-    try:
-        response = await client.messages.create(
-            model=model,
-            max_tokens=4096,
-            temperature=diff_config["temperature"],
-            messages=[{"role": "user", "content": prompt}],
-        )
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = await client.messages.create(
+                model=model,
+                max_tokens=4096,
+                temperature=diff_config["temperature"],
+                messages=[{"role": "user", "content": prompt}],
+            )
 
-        response_text = response.content[0].text
-        turns = json.loads(response_text)
+            response_text = response.content[0].text
+            turns = json.loads(response_text)
 
-        return {
-            "turns": turns,
-            "label": 1,
-            "intent": intent,
-            "strategy": strategy,
-            "difficulty": difficulty,
-            "generation_method": "llm_intent",
-            "model": model,
-            "prompt_hash": hashlib.sha256(prompt.encode()).hexdigest(),
-            "response_hash": hashlib.sha256(response_text.encode()).hexdigest(),
-            "timestamp": time.time(),
-            "input_tokens": response.usage.input_tokens,
-            "output_tokens": response.usage.output_tokens,
-        }
-    except (json.JSONDecodeError, IndexError, KeyError) as e:
-        return {
-            "error": str(e),
-            "intent": intent,
-            "strategy": strategy,
-            "difficulty": difficulty,
-        }
+            return {
+                "turns": turns,
+                "label": 1,
+                "intent": intent,
+                "strategy": strategy,
+                "difficulty": difficulty,
+                "generation_method": "llm_intent",
+                "model": model,
+                "prompt_hash": hashlib.sha256(prompt.encode()).hexdigest(),
+                "response_hash": hashlib.sha256(response_text.encode()).hexdigest(),
+                "timestamp": time.time(),
+                "input_tokens": response.usage.input_tokens,
+                "output_tokens": response.usage.output_tokens,
+            }
+        except (json.JSONDecodeError, IndexError, KeyError) as e:
+            return {
+                "error": str(e),
+                "intent": intent,
+                "strategy": strategy,
+                "difficulty": difficulty,
+            }
+        except anthropic.RateLimitError:
+            if attempt < max_retries - 1:
+                await asyncio.sleep(2 ** attempt * 5)
+                continue
+            return {"error": "rate_limit_exceeded", "intent": intent,
+                    "strategy": strategy, "difficulty": difficulty}
+        except anthropic.APIError as e:
+            if attempt < max_retries - 1 and e.status_code in (429, 500, 502, 503, 529):
+                await asyncio.sleep(2 ** attempt * 5)
+                continue
+            return {"error": f"api_error_{e.status_code}: {e.message}", "intent": intent,
+                    "strategy": strategy, "difficulty": difficulty}
+    return {"error": "max_retries_exceeded", "intent": intent,
+            "strategy": strategy, "difficulty": difficulty}
 
 
 async def generate_batch(intents, strategies, difficulty, num_turns_range,
-                         output_path, model="claude-sonnet-4-6-20250514",
+                         output_path, model="claude-4-sonnet-20250514",
                          max_concurrent=50):
     """Generate a batch of conversations asynchronously.
 

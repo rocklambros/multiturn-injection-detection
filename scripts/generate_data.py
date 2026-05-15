@@ -23,13 +23,16 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.utils.seed import set_global_seed
-from src.data.partitioner import partition_source_texts
-from src.data.intent_extractor import extract_intents_batch, deduplicate_intents
-from src.data.batch_generator import generate_batch
-from src.data.synthetic_v2 import build_attack_sequence, build_benign_sequence
-from src.data.response_stripper import strip_batch
-from src.data.manifest import create_manifest
+import dotenv  # noqa: E402
+dotenv.load_dotenv()
+
+from src.utils.seed import set_global_seed  # noqa: E402
+from src.data.partitioner import partition_source_texts  # noqa: E402
+from src.data.intent_extractor import extract_intents_batch, deduplicate_intents  # noqa: E402
+from src.data.batch_generator import generate_batch  # noqa: E402
+from src.data.synthetic_v2 import build_attack_sequence, build_benign_sequence  # noqa: E402
+from src.data.response_stripper import strip_batch  # noqa: E402
+from src.data.manifest import create_manifest  # noqa: E402
 
 # Strategy distribution
 STRATEGY_DIST = {
@@ -291,7 +294,7 @@ async def main(args):
         partition_manifest_path=str(output_dir / "partition_manifest.json"),
         generation_stats=generation_stats,
         gate_stats=gate_stats,
-        model_version="claude-sonnet-4-6-20250514",
+        model_version="claude-4-sonnet-20250514",
         api_params={
             "easy": {"temperature": 0.7},
             "medium": {"temperature": 0.7},
