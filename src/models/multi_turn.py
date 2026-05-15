@@ -51,7 +51,7 @@ class MultiTurnClassifier(nn.Module):
             mask: Turn mask, shape (batch, max_turns), 1=real turn, 0=padding.
 
         Returns:
-            Sigmoid probability, shape (batch, 1).
+            Raw logits, shape (batch, 1). Apply sigmoid externally for probabilities.
         """
         batch_size, max_turns, seq_len = x.shape
 
@@ -70,4 +70,4 @@ class MultiTurnClassifier(nn.Module):
         # Sequence-level LSTM
         lstm_out, (hidden, _) = self.sequence_lstm(turn_encodings)
         out = self.dropout(F.relu(self.fc1(hidden.squeeze(0))))
-        return torch.sigmoid(self.fc2(self.dropout(out)))
+        return self.fc2(self.dropout(out))

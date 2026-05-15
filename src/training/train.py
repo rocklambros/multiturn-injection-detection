@@ -23,7 +23,7 @@ def compute_accuracy(outputs, targets):
     Returns:
         float: Accuracy as a fraction in [0, 1].
     """
-    preds = (outputs >= 0.5).float()
+    preds = (outputs >= 0.0).float()
     targets_flat = targets.view(-1)
     preds_flat = preds.view(-1)
     correct = (preds_flat == targets_flat).sum().item()
@@ -122,7 +122,7 @@ def train_one_epoch(model, train_loader, optimizer, criterion, device):
         optimizer.step()
 
         running_loss += loss.item() * inputs.size(0)
-        running_correct += ((outputs >= 0.5).float() == labels).sum().item()
+        running_correct += ((outputs >= 0.0).float() == labels).sum().item()
         total_samples += inputs.size(0)
 
     avg_loss = running_loss / total_samples
@@ -176,7 +176,7 @@ def validate(model, val_loader, criterion, device):
             loss = criterion(outputs, labels)
 
             running_loss += loss.item() * inputs.size(0)
-            running_correct += ((outputs >= 0.5).float() == labels).sum().item()
+            running_correct += ((outputs >= 0.0).float() == labels).sum().item()
             total_samples += inputs.size(0)
 
     avg_loss = running_loss / total_samples
@@ -195,7 +195,7 @@ def train_model(model, train_loader, val_loader, epochs, iteration_name,
         epochs: Maximum training epochs.
         iteration_name: String identifier for saving results (e.g., 'iter1_lstm').
         optimizer: PyTorch optimizer (typically Adam).
-        criterion: Loss function (typically BCELoss).
+        criterion: Loss function (typically BCEWithLogitsLoss).
         device: torch.device ('cuda' or 'cpu').
         patience: Early stopping patience (default 3).
 

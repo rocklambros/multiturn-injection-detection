@@ -93,9 +93,9 @@ class MultiTurnAttentionClassifier(nn.Module):
 
         Returns:
             If self._return_attention is False:
-                Sigmoid probability, shape (batch, 1).
+                Raw logits, shape (batch, 1). Apply sigmoid externally for probabilities.
             If self._return_attention is True:
-                Tuple of (probability, attention_weights).
+                Tuple of (logits, attention_weights).
         """
         batch_size, max_turns, seq_len = x.shape
 
@@ -116,8 +116,8 @@ class MultiTurnAttentionClassifier(nn.Module):
         context, attention_weights = self.attention(lstm_out, mask)  # (batch, hidden_dim)
 
         out = self.dropout(F.relu(self.fc1(context)))
-        prob = torch.sigmoid(self.fc2(self.dropout(out)))
+        logits = self.fc2(self.dropout(out))
 
         if self._return_attention:
-            return prob, attention_weights
-        return prob
+            return logits, attention_weights
+        return logits

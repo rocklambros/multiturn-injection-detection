@@ -84,8 +84,8 @@ def evaluate_model(model, test_loader, device, iteration_name, test_df=None):
     with torch.no_grad():
         for inputs, labels in test_loader:
             inputs = inputs.to(device)
-            outputs = model(inputs)
-            probs = outputs.squeeze(-1).cpu().numpy()
+            logits = model(inputs)
+            probs = torch.sigmoid(logits).squeeze(-1).cpu().numpy()
             if probs.ndim == 0:
                 probs = probs.reshape(1)
             preds = (probs >= 0.5).astype(int)
@@ -129,7 +129,7 @@ def run_iteration_1(vocab, train_loader, val_loader, test_loader, device):
     print(f"Parameters: {sum(p.numel() for p in model.parameters()):,}")
 
     optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate)
-    criterion = nn.BCELoss()
+    criterion = nn.BCEWithLogitsLoss()
 
     history = train_model(
         model, train_loader, val_loader,
@@ -176,7 +176,7 @@ def run_iteration_2(vocab, train_loader, val_loader, test_loader, device):
         filter(lambda p: p.requires_grad, model.parameters()),
         lr=config.learning_rate,
     )
-    criterion = nn.BCELoss()
+    criterion = nn.BCEWithLogitsLoss()
 
     history = train_model(
         model, train_loader, val_loader,
@@ -218,7 +218,7 @@ def run_iteration_3(vocab, train_loader, val_loader, test_loader, device):
         print(f"Parameters: {sum(p.numel() for p in model.parameters()):,}")
 
         optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate)
-        criterion = nn.BCELoss()
+        criterion = nn.BCEWithLogitsLoss()
 
         history = train_model(
             model, train_loader, val_loader,
@@ -264,7 +264,7 @@ def run_iteration_4(vocab, train_loader, val_loader, test_loader, device):
     print(f"Parameters: {param_count:,}")
 
     optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate)
-    criterion = nn.BCELoss()
+    criterion = nn.BCEWithLogitsLoss()
 
     start = time.time()
     history = train_model(

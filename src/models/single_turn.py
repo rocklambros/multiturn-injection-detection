@@ -51,12 +51,12 @@ class SingleTurnLSTM(nn.Module):
             x: Token IDs, shape (batch, seq_len).
 
         Returns:
-            Sigmoid probability, shape (batch, 1).
+            Raw logits, shape (batch, 1). Apply sigmoid externally for probabilities.
         """
         embedded = self.embedding(x)
         _, (hidden, _) = self.lstm(embedded)
         out = F.relu(self.fc1(hidden.squeeze(0)))
-        return torch.sigmoid(self.fc2(out))
+        return self.fc2(out)
 
     def encode(self, x):
         """Return hidden representation before classification head.
@@ -113,13 +113,13 @@ class BiLSTMClassifier(nn.Module):
             x: Token IDs, shape (batch, seq_len).
 
         Returns:
-            Sigmoid probability, shape (batch, 1).
+            Raw logits, shape (batch, 1). Apply sigmoid externally for probabilities.
         """
         embedded = self.embedding(x)
         _, (hidden, _) = self.lstm(embedded)
         hidden_cat = torch.cat((hidden[0], hidden[1]), dim=1)
         out = self.dropout(F.relu(self.fc1(hidden_cat)))
-        return torch.sigmoid(self.fc2(self.dropout(out)))
+        return self.fc2(self.dropout(out))
 
     def encode(self, x):
         """Return hidden representation before classification head.
@@ -177,13 +177,13 @@ class GRUClassifier(nn.Module):
             x: Token IDs, shape (batch, seq_len).
 
         Returns:
-            Sigmoid probability, shape (batch, 1).
+            Raw logits, shape (batch, 1). Apply sigmoid externally for probabilities.
         """
         embedded = self.embedding(x)
         _, hidden = self.gru(embedded)
         hidden_cat = torch.cat((hidden[0], hidden[1]), dim=1)
         out = self.dropout(F.relu(self.fc1(hidden_cat)))
-        return torch.sigmoid(self.fc2(self.dropout(out)))
+        return self.fc2(self.dropout(out))
 
     def encode(self, x):
         """Return hidden representation before classification head.

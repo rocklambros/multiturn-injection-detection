@@ -144,8 +144,8 @@ def evaluate_multiturn_model(model, test_loader, device, iteration_name, return_
         for inputs, mask, labels in test_loader:
             inputs = inputs.to(device)
             mask = mask.to(device)
-            outputs = model(inputs, mask)
-            probs = outputs.squeeze().cpu().numpy()
+            logits = model(inputs, mask)
+            probs = torch.sigmoid(logits).squeeze().cpu().numpy()
             preds = (probs >= 0.5).astype(int)
             all_probs.extend(probs.tolist() if hasattr(probs, 'tolist') else [probs])
             all_preds.extend(preds.tolist() if hasattr(preds, 'tolist') else [preds])
@@ -196,7 +196,7 @@ def evaluate_single_turn_on_multiturn(turn_encoder, test_loader, device):
             turn_probs = []
             for t in range(max_turns):
                 turn_input = inputs[:, t, :]
-                turn_output = turn_encoder(turn_input).squeeze()
+                turn_output = torch.sigmoid(turn_encoder(turn_input)).squeeze()
                 turn_probs.append(turn_output)
 
             turn_probs = torch.stack(turn_probs, dim=1)  # (batch, max_turns)
@@ -247,7 +247,7 @@ def run_iteration_5(turn_encoder, vocab, train_loader, val_loader, test_loader, 
         filter(lambda p: p.requires_grad, model.parameters()),
         lr=config.learning_rate,
     )
-    criterion = nn.BCELoss()
+    criterion = nn.BCEWithLogitsLoss()
 
     history = train_model(
         model, train_loader, val_loader,
@@ -294,7 +294,7 @@ def run_iteration_6(turn_encoder, vocab, train_loader, val_loader, test_loader, 
         filter(lambda p: p.requires_grad, model.parameters()),
         lr=config.learning_rate,
     )
-    criterion = nn.BCELoss()
+    criterion = nn.BCEWithLogitsLoss()
 
     history = train_model(
         model, train_loader, val_loader,
@@ -340,8 +340,8 @@ def analyze_attention(model, test_loader, test_data, device, iteration_name):
         for inputs, mask, labels in test_loader:
             inputs = inputs.to(device)
             mask = mask.to(device)
-            probs, weights = model(inputs, mask)
-            preds = (probs.squeeze() >= 0.5).cpu().numpy()
+            logits, weights = model(inputs, mask)
+            preds = (torch.sigmoid(logits).squeeze() >= 0.5).cpu().numpy()
             all_weights.extend(weights.cpu().numpy().tolist())
             all_labels.extend(labels.numpy().tolist())
             all_preds.extend(preds.tolist())
@@ -402,8 +402,9 @@ def run_iteration_7(model, test_loader, device):
         for inputs, mask, labels in test_loader:
             inputs = inputs.to(device)
             mask = mask.to(device)
-            outputs = model(inputs, mask)
-            all_probs.extend(outputs.squeeze().cpu().numpy().tolist())
+            logits = model(inputs, mask)
+            probs = torch.sigmoid(logits).squeeze().cpu().numpy()
+            all_probs.extend(probs.tolist() if hasattr(probs, 'tolist') else [probs])
             all_labels.extend(labels.numpy().tolist())
 
     y_true = np.array(all_labels)
