@@ -3301,7 +3301,7 @@ def train_iter5():
     )
 
     optimizer = torch.optim.Adam(
-        filter(lambda p: p.requires_grad, model.parameters()), lr=0.001,
+        filter(lambda p: p.requires_grad, model.parameters()), lr=3e-4,
     )
     criterion = nn.BCEWithLogitsLoss()
 
@@ -3340,7 +3340,7 @@ def train_iter6():
     )
 
     optimizer = torch.optim.Adam(
-        filter(lambda p: p.requires_grad, model.parameters()), lr=0.001,
+        filter(lambda p: p.requires_grad, model.parameters()), lr=3e-4,
     )
     criterion = nn.BCEWithLogitsLoss()
 
@@ -4003,8 +4003,12 @@ Phase 2                → Execute: python scripts/generate_data.py --output-dir
                           GATE: Val/test gate pass rate > 70%
                           GATE: Class balance 50/50 ± 5% per split
 
-Phase 3                → RunPod: 5 GPUs parallel training
-                          Tasks: gru_retrain, iter5, iter6, distilbert_hier, distilbert_concat
+Phase 3                → RunPod: training (gru_retrain FIRST, then 4 parallel)
+                          DEPENDENCY: gru_retrain must complete before iter5/iter6
+                            (they load frozen encoder from models/v2_gru_retrain_best.pt
+                             via encoder_decision.json updated by gru_retrain)
+                          Step 1: python scripts/run_training.py --task gru_retrain
+                          Step 2 (parallel): iter5, iter6, distilbert_hier, distilbert_concat
                           Monitor: WandB dashboard
                           GATE: All models converge
 
