@@ -60,7 +60,7 @@ nvidia-smi || die "No GPU detected"
 python3 -c "import torch; assert torch.cuda.is_available(), 'CUDA not available'" || die "PyTorch CUDA not available"
 
 GPU_NAME=$(python3 -c "import torch; print(torch.cuda.get_device_name(0))")
-GPU_MEM=$(python3 -c "import torch; print(f'{torch.cuda.get_device_properties(0).total_mem / 1e9:.1f}GB')")
+GPU_MEM=$(python3 -c "import torch; p=torch.cuda.get_device_properties(0); m=getattr(p,'total_memory',getattr(p,'total_mem',0)); print(f'{m/1e9:.1f}GB')")
 log "GPU: $GPU_NAME ($GPU_MEM)"
 
 [ -f "$WANDB_KEY_FILE" ] || die "WandB key not found at $WANDB_KEY_FILE. Run: echo 'YOUR_KEY' > $WANDB_KEY_FILE"
