@@ -34,7 +34,7 @@ from src.data.partitioner import partition_source_texts  # noqa: E402
 from src.data.intent_extractor import extract_intents_batch, deduplicate_intents  # noqa: E402
 from src.data.shared_prefix_generator import generate_batch as generate_sp_batch  # noqa: E402
 from src.data.synthetic_v2 import build_attack_sequence, build_benign_sequence, filter_benign_pool  # noqa: E402
-from src.data.response_stripper import strip_batch  # noqa: E402
+# strip_batch import removed — all tiers keep assistant turns for consistency
 from src.data.confound_gates import run_confound_gates  # noqa: E402
 
 STRATEGY_DIST = {
@@ -175,26 +175,9 @@ async def main(args):
         total_errors = sum(s.get("errors", 0) for s in generation_stats.values())
         print(f"\nGeneration complete: {total_pairs} pairs, {total_errors} errors, ~${total_cost:.2f}")
 
-    # --- Step 4: Strip AI responses for hard/adversarial ---
-    if not args.template_only:
-        print("\nStripping AI responses from hard/adversarial tiers...")
-        for tier in ["hard", "adversarial"]:
-            for split in ["train", "val", "test"]:
-                src_path = output_dir / f"sp_{tier}_{split}.jsonl"
-                if not src_path.exists():
-                    continue
-                sequences = []
-                with open(src_path) as f:
-                    for line in f:
-                        seq = json.loads(line)
-                        if "error" not in seq:
-                            sequences.append(seq)
-                stripped = strip_batch(sequences)
-                out_path = output_dir / f"sp_{tier}_{split}_stripped.jsonl"
-                with open(out_path, "w") as f:
-                    for seq in stripped:
-                        f.write(json.dumps(seq) + "\n")
-                print(f"  Stripped {tier}/{split}: {len(stripped)} sequences")
+    # NOTE: Response stripping removed. All tiers now keep assistant turns
+    # for structural consistency. Stripping only hard/adversarial created a
+    # cross-tier vocabulary confound (BoW could detect tier structure).
 
     # --- Step 5: Template generation (evaluation-only) ---
     if not args.skip_templates:
@@ -215,25 +198,76 @@ async def main(args):
                 json.dump(sequences, f, indent=2)
             print(f"  {split}: {len(sequences)} template sequences -> {out_path}")
 
-    # --- Step 6: Merge into final files ---
+    # --- Step 6: Normalize turn counts within pairs ---
+    print("\nNormalizing turn counts within pairs...")
+    for tier in ["easy", "medium", "hard", "adversarial"]:
+        for split in ["train", "val", "test"]:
+            raw_path = output_dir / f"sp_{tier}_{split}.jsonl"
+            stripped_path = output_dir / f"sp_{tier}_{split}_stripped.jsonl"
+            src_path = stripped_path if stripped_path.exists() else raw_path
+            if not src_path.exists():
+                continue
+
+            seqs_by_pair = {}
+            errors = []
+            with open(src_path) as f:
+                for line in f:
+                    seq = json.loads(line)
+                    if "error" in seq:
+                        errors.append(seq)
+                        continue
+                    pid = seq.get("pair_id", "")
+                    if pid not in seqs_by_pair:
+                        seqs_by_pair[pid] = []
+                    seqs_by_pair[pid].append(seq)
+
+            normalized = []
+            trimmed_count = 0
+            for pid, pair in seqs_by_pair.items():
+                if len(pair) == 2:
+                    min_len = min(len(pair[0]["turns"]), len(pair[1]["turns"]))
+                    for s in pair:
+                        if len(s["turns"]) > min_len:
+                            s["turns"] = s["turns"][:min_len]
+                            trimmed_count += 1
+                        normalized.append(s)
+                else:
+                    normalized.extend(pair)
+
+            out_path = output_dir / f"sp_{tier}_{split}_norm.jsonl"
+            with open(out_path, "w") as f:
+                for seq in normalized:
+                    f.write(json.dumps(seq) + "\n")
+                for err in errors:
+                    f.write(json.dumps(err) + "\n")
+
+            if trimmed_count > 0:
+                print(f"  {tier}/{split}: trimmed {trimmed_count} sequences to match pair lengths")
+
+    # --- Step 7: Merge into final files ---
     print("\nMerging into final dataset files...")
     for split in ["train", "val", "test"]:
         all_sequences = []
 
-        # Shared-prefix sequences (prefer stripped for hard/adversarial)
         for tier in ["easy", "medium", "hard", "adversarial"]:
-            raw_path = output_dir / f"sp_{tier}_{split}.jsonl"
+            # Prefer normalized > stripped > raw
+            norm_path = output_dir / f"sp_{tier}_{split}_norm.jsonl"
             stripped_path = output_dir / f"sp_{tier}_{split}_stripped.jsonl"
-            src_path = stripped_path if stripped_path.exists() else raw_path
+            raw_path = output_dir / f"sp_{tier}_{split}.jsonl"
+
+            if norm_path.exists():
+                src_path = norm_path
+            elif stripped_path.exists():
+                src_path = stripped_path
+            else:
+                src_path = raw_path
+
             if src_path.exists():
                 with open(src_path) as f:
                     for line in f:
                         seq = json.loads(line)
                         if "error" not in seq:
                             all_sequences.append(seq)
-
-        # NOTE: Template sequences are NOT merged into the primary dataset.
-        # They are kept separate for evaluation-only use.
 
         random.shuffle(all_sequences)
         final_path = output_dir / f"multiturn_{split}.json"
@@ -244,7 +278,7 @@ async def main(args):
         benign_count = len(all_sequences) - attack_count
         print(f"  {split}: {len(all_sequences)} total ({attack_count} attack, {benign_count} benign)")
 
-    # --- Step 7: Run confound gates (train split only) ---
+    # --- Step 8: Run confound gates (train split only) ---
     print("\nLoading train data for confound gates...")
     with open(output_dir / "multiturn_train.json") as f:
         train_data = json.load(f)
@@ -275,7 +309,7 @@ async def main(args):
                 print("Use --force to proceed despite gate failure.")
                 sys.exit(1)
 
-    # --- Step 8: Summary ---
+    # --- Step 9: Summary ---
     print("\n" + "=" * 70)
     print("V3 DATA GENERATION COMPLETE")
     print("=" * 70)

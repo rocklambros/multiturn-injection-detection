@@ -20,6 +20,7 @@ from src.data.partitioner import partition_source_texts
 from src.data.intent_extractor import extract_intents_batch
 from src.data.synthetic_v2 import build_attack_sequence, build_benign_sequence
 from src.data.response_stripper import strip_responses
+from src.data.shared_prefix_generator import assemble_pair
 
 
 @pytest.fixture
@@ -111,3 +112,44 @@ def test_merged_output_is_loadable(tiny_corpus, tmp_output):
             assert "turns" in seq
             assert "label" in seq
             assert seq["label"] in (0, 1)
+
+
+def test_assemble_pair_normalizes_turn_count():
+    """Paired sequences must have identical turn counts to prevent length confound."""
+    benign_result = {
+        "turns": [
+            {"role": "user", "text": "hi"},
+            {"role": "assistant", "text": "hello"},
+            {"role": "user", "text": "question 1"},
+            {"role": "assistant", "text": "answer 1"},
+            {"role": "user", "text": "question 2"},
+            {"role": "assistant", "text": "answer 2"},
+            {"role": "user", "text": "question 3"},
+            {"role": "assistant", "text": "answer 3"},
+            {"role": "user", "text": "question 4"},
+            {"role": "assistant", "text": "answer 4"},
+        ],
+        "topic": "test topic",
+    }
+    continuation_result = {
+        "turns": [
+            {"role": "user", "text": "attack turn 1"},
+            {"role": "user", "text": "attack turn 2"},
+        ],
+    }
+    benign_seq, attack_seq = assemble_pair(
+        benign_result, continuation_result, k=3,
+        attack_goal="test goal", strategy="gradual_escalation",
+        difficulty="easy", pair_id="test_pair_0",
+    )
+    assert len(benign_seq["turns"]) == len(attack_seq["turns"]), (
+        f"Turn count mismatch: benign={len(benign_seq['turns'])}, "
+        f"attack={len(attack_seq['turns'])}"
+    )
+    assert benign_seq["label"] == 0
+    assert attack_seq["label"] == 1
+    prefix_len = min(len(benign_seq["turns"]), 6)
+    for i in range(prefix_len):
+        assert benign_seq["turns"][i] == attack_seq["turns"][i], (
+            f"Shared prefix mismatch at turn {i}"
+        )

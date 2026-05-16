@@ -17,20 +17,21 @@ from sklearn.metrics import f1_score
 from sklearn.model_selection import StratifiedKFold
 
 
-def _extract_turns_text(seq):
+def _extract_turns_text(seq, user_only=False):
     turns = seq.get("turns", [])
     texts = []
     for t in turns:
         if isinstance(t, dict):
-            if t.get("role", "user") == "user":
-                texts.append(t.get("text", ""))
+            if user_only and t.get("role") != "user":
+                continue
+            texts.append(t.get("text", ""))
         elif isinstance(t, str):
             texts.append(t)
     return texts
 
 
 def _concat_text(seq):
-    return " ".join(_extract_turns_text(seq))
+    return " ".join(_extract_turns_text(seq, user_only=False))
 
 
 BARRIER_1_GATES = {
@@ -129,7 +130,7 @@ def _run_cv_per_turn_voting(sequences, labels, mode="max", n_splits=5):
         all_turns = []
         all_turn_labels = []
         for seq, label in zip(train_seqs, train_labels):
-            for t in _extract_turns_text(seq):
+            for t in _extract_turns_text(seq, user_only=True):
                 all_turns.append(t)
                 all_turn_labels.append(label)
 
@@ -144,7 +145,7 @@ def _run_cv_per_turn_voting(sequences, labels, mode="max", n_splits=5):
 
         val_preds = []
         for seq in val_seqs:
-            turns = _extract_turns_text(seq)
+            turns = _extract_turns_text(seq, user_only=True)
             if not turns:
                 val_preds.append(0)
                 continue
@@ -225,10 +226,10 @@ def run_confound_gates(train_data, calibrated_thresholds=None):
     print(f"  Bigram BoW:     F1={np.mean(fold_f1s):.4f}±{np.std(fold_f1s):.4f} "
           f"(threshold <{gate['threshold']}) [{status}]")
 
-    # First-turn only
+    # First-turn only (user turns)
     first_texts = []
     for s in train_data:
-        turns = _extract_turns_text(s)
+        turns = _extract_turns_text(s, user_only=True)
         first_texts.append(turns[0] if turns else "")
     fold_f1s = _run_cv_bow(first_texts, labels, ngram_range=(1, 1), max_features=3000)
     gate = BARRIER_1_GATES["first_turn_only"]
@@ -244,10 +245,10 @@ def run_confound_gates(train_data, calibrated_thresholds=None):
     print(f"  First-turn:     F1={np.mean(fold_f1s):.4f}±{np.std(fold_f1s):.4f} "
           f"(threshold <{gate['threshold']}) [{status}]")
 
-    # Last-turn only
+    # Last-turn only (user turns)
     last_texts = []
     for s in train_data:
-        turns = _extract_turns_text(s)
+        turns = _extract_turns_text(s, user_only=True)
         last_texts.append(turns[-1] if turns else "")
     fold_f1s = _run_cv_bow(last_texts, labels, ngram_range=(1, 1), max_features=3000)
     gate = BARRIER_1_GATES["last_turn_only"]
