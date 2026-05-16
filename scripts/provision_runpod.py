@@ -86,19 +86,24 @@ def get_deploy_key():
 
 
 def build_startup_command(task):
-    return (
+    # Wrap in bash -c so shell operators (&, &&, ;) are interpreted.
+    # nvidia_entrypoint.sh uses exec "$@" which passes args without
+    # shell interpretation; bash -c forces a shell context.
+    inner = (
+        "/start.sh & "
+        "sleep 5 && "
+        "echo $WANDB_API_KEY > /root/.wandb_key && "
         "mkdir -p /root/.ssh && "
         "echo $DEPLOY_KEY_B64 | base64 -d > /root/.ssh/id_ed25519 && "
         "chmod 600 /root/.ssh/id_ed25519 && "
         "ssh-keyscan github.com >> /root/.ssh/known_hosts 2>/dev/null && "
-        "echo $WANDB_API_KEY > /root/.wandb_key && "
-        "apt-get update -qq && apt-get install -y -qq git > /dev/null 2>&1 && "
-        f"git clone -b {REPO_BRANCH} {REPO_URL} /workspace/mt 2>/dev/null && "
+        f"git clone -b {REPO_BRANCH} {REPO_URL} /workspace/mt && "
         "cd /workspace/mt && "
         "pip install -q -r requirements.txt 2>&1 | tail -1 && "
         f"bash scripts/bootstrap_runpod.sh {task} 2>&1 | tee /workspace/{task}.log; "
-        f"echo EXIT_CODE=$? >> /workspace/{task}.log"
+        "sleep infinity"
     )
+    return f"bash -c '{inner}'"
 
 
 def create_pod(task, wandb_key, deploy_key, gpu_type, dry_run=False):
@@ -117,6 +122,7 @@ def create_pod(task, wandb_key, deploy_key, gpu_type, dry_run=False):
         volume_in_gb=VOLUME_SIZE,
         container_disk_in_gb=CONTAINER_DISK,
         docker_args=startup_cmd,
+        ports="22/tcp",
         env={
             "WANDB_API_KEY": wandb_key,
             "DEPLOY_KEY_B64": deploy_key,
