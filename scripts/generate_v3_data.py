@@ -249,26 +249,31 @@ async def main(args):
     with open(output_dir / "multiturn_train.json") as f:
         train_data = json.load(f)
 
-    # Load calibrated thresholds if available
-    calibrated = None
-    cal_path = Path("results/null_calibration.json")
-    if cal_path.exists():
-        with open(cal_path) as f:
-            cal = json.load(f)
-        calibrated = cal.get("thresholds", {})
-        print(f"  Using calibrated thresholds from {cal_path}")
+    all_pass = True
+    gate_results = {}
 
-    all_pass, gate_results = run_confound_gates(train_data, calibrated_thresholds=calibrated)
+    if len(train_data) < 10:
+        print(f"  Skipping gates — only {len(train_data)} train sequences (need at least 10)")
+    else:
+        calibrated = None
+        cal_path = Path("results/null_calibration.json")
+        if cal_path.exists():
+            with open(cal_path) as f:
+                cal = json.load(f)
+            calibrated = cal.get("thresholds", {})
+            print(f"  Using calibrated thresholds from {cal_path}")
 
-    with open(output_dir / "gate_results.json", "w") as f:
-        json.dump(gate_results, f, indent=2)
+        all_pass, gate_results = run_confound_gates(train_data, calibrated_thresholds=calibrated)
 
-    if not all_pass:
-        print("\nWARNING: Confound gates FAILED. Data may have lexical confounds.")
-        print("Review gate_results.json for diagnostics.")
-        if not args.force:
-            print("Use --force to proceed despite gate failure.")
-            sys.exit(1)
+        with open(output_dir / "gate_results.json", "w") as f:
+            json.dump(gate_results, f, indent=2)
+
+        if not all_pass:
+            print("\nWARNING: Confound gates FAILED. Data may have lexical confounds.")
+            print("Review gate_results.json for diagnostics.")
+            if not args.force:
+                print("Use --force to proceed despite gate failure.")
+                sys.exit(1)
 
     # --- Step 8: Summary ---
     print("\n" + "=" * 70)
