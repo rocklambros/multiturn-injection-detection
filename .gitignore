@@ -11,6 +11,12 @@ data/synthetic_v2/
 # Results (regenerated from notebook, top-level only)
 /results/
 
+# WandB
+wandb/
+
+# Logs
+*.log
+
 # Secrets
 .env
 
