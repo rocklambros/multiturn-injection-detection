@@ -7,17 +7,15 @@ Iteration 7: Threshold tuning
 
 import json
 import os
-import time
 
 import numpy as np
-import pandas as pd
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
 from src.utils.config import ITERATIONS
-from src.utils.tokenizer import load_vocab, encode_texts, encode_multiturn
-from src.data.loader import SingleTurnDataset, MultiTurnDataset
+from src.utils.tokenizer import load_vocab, encode_multiturn
+from src.data.loader import MultiTurnDataset
 from src.models.single_turn import GRUClassifier, BiLSTMClassifier
 from src.models.multi_turn import MultiTurnClassifier
 from src.models.attention import MultiTurnAttentionClassifier
@@ -80,7 +78,7 @@ def load_turn_encoder(decision, vocab, device):
     return model
 
 
-def load_multiturn_data(vocab, batch_size=32, max_turns=10, max_len=256):
+def load_multiturn_data(vocab, batch_size=32, max_turns=10, max_len=256, data_dir="data/synthetic"):
     """Load and encode multi-turn datasets.
 
     Args:
@@ -88,6 +86,7 @@ def load_multiturn_data(vocab, batch_size=32, max_turns=10, max_len=256):
         batch_size: Batch size.
         max_turns: Max conversation turns.
         max_len: Max tokens per turn.
+        data_dir: Directory containing multiturn_{split}.json files.
 
     Returns:
         Tuple of (train_loader, val_loader, test_loader, test_data).
@@ -96,13 +95,13 @@ def load_multiturn_data(vocab, batch_size=32, max_turns=10, max_len=256):
     test_data = None
 
     for split in ["train", "val", "test"]:
-        with open(f"data/synthetic/multiturn_{split}.json") as f:
+        with open(f"{data_dir}/multiturn_{split}.json") as f:
             data = json.load(f)
 
         if split == "test":
             test_data = data
 
-        turns_list = [[turn["text"] for turn in seq["turns"]] for seq in data]
+        turns_list = [[turn["text"] for turn in seq["turns"] if turn.get("role", "user") == "user"] for seq in data]
         labels_list = [seq["label"] for seq in data]
 
         token_ids, masks = encode_multiturn(vocab, turns_list, max_turns=max_turns, max_len=max_len)
@@ -346,7 +345,7 @@ def analyze_attention(model, test_loader, test_data, device, iteration_name):
     model._return_attention = False
 
     # Analyze correctly classified attacks
-    print(f"\nAttention Pattern Analysis:")
+    print("\nAttention Pattern Analysis:")
     attack_weights = []
     for i, (label, pred, weights) in enumerate(zip(all_labels, all_preds, all_weights)):
         if label == 1 and pred == 1:  # True positive
@@ -355,7 +354,7 @@ def analyze_attention(model, test_loader, test_data, device, iteration_name):
     if attack_weights:
         avg_weights = np.mean(attack_weights, axis=0)
         print(f"  Correctly classified attacks: {len(attack_weights)}")
-        print(f"  Average attention weights per turn position:")
+        print("  Average attention weights per turn position:")
         for t, w in enumerate(avg_weights):
             bar = "█" * int(w * 50)
             print(f"    Turn {t}: {w:.4f} {bar}")
@@ -446,7 +445,7 @@ def run_iteration_7(model, val_loader, test_loader, device):
         print(f"\nVal — Threshold achieving 95% precision: {best_precision_95['threshold']:.2f}")
         print(f"  F1={best_precision_95['f1']:.4f}, Precision={best_precision_95['precision']:.4f}, Recall={best_precision_95['recall']:.4f}")
 
-    print(f"\nSecurity reasoning: missed injections (FN) cost more than false alarms (FP).")
+    print("\nSecurity reasoning: missed injections (FN) cost more than false alarms (FP).")
     print(f"Recommend threshold for 95% recall: {best_recall_95['threshold']:.2f}" if best_recall_95 else "No threshold achieves 95% recall.")
 
     # --- Evaluate once on test set with the chosen threshold ---
@@ -555,12 +554,12 @@ def run_all():
     print(f"  Best threshold (iter 7):      F1={threshold_results['best_f1_threshold']['f1']:.4f}")
 
     if gap_5 > 0:
-        print(f"\n  The temporal architecture shows its value: the sequence-level LSTM")
-        print(f"  carrying state across turns detects escalation patterns that no")
-        print(f"  individual turn reveals.")
+        print("\n  The temporal architecture shows its value: the sequence-level LSTM")
+        print("  carrying state across turns detects escalation patterns that no")
+        print("  individual turn reveals.")
     else:
-        print(f"\n  Multi-turn model did not outperform single-turn applied per-turn.")
-        print(f"  This suggests synthetic data may not capture realistic temporal patterns.")
+        print("\n  Multi-turn model did not outperform single-turn applied per-turn.")
+        print("  This suggests synthetic data may not capture realistic temporal patterns.")
 
     # Save core finding
     core_finding = {
@@ -573,7 +572,7 @@ def run_all():
     }
     with open("results/core_finding.json", "w") as f:
         json.dump(core_finding, f, indent=2)
-    print(f"\nCore finding saved to results/core_finding.json")
+    print("\nCore finding saved to results/core_finding.json")
 
 
 if __name__ == "__main__":

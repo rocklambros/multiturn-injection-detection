@@ -6,7 +6,6 @@ import os
 import time
 
 import torch
-import torch.nn as nn
 from tqdm import tqdm
 
 try:
@@ -84,8 +83,14 @@ def train_one_epoch(model, train_loader, optimizer, criterion, device):
     total_samples = 0
 
     for batch_idx, batch in enumerate(tqdm(train_loader, desc="  Training", leave=False)):
-        # Handle both 2-element (inputs, labels) and 3-element (inputs, mask, labels) batches
-        if len(batch) == 3:
+        turn_mask = None
+        if len(batch) == 4:
+            inputs, mask, turn_mask, labels = batch
+            inputs = inputs.to(device)
+            mask = mask.to(device)
+            turn_mask = turn_mask.to(device)
+            labels = labels.to(device)
+        elif len(batch) == 3:
             inputs, mask, labels = batch
             inputs = inputs.to(device)
             mask = mask.to(device)
@@ -102,7 +107,9 @@ def train_one_epoch(model, train_loader, optimizer, criterion, device):
                 print(f"    [Shape] Train batch mask: {mask.shape}")
 
         optimizer.zero_grad()
-        if mask is not None:
+        if turn_mask is not None:
+            outputs = model(inputs, mask, turn_mask)
+        elif mask is not None:
             outputs = model(inputs, mask)
         else:
             outputs = model(inputs)
@@ -120,7 +127,8 @@ def train_one_epoch(model, train_loader, optimizer, criterion, device):
         loss.backward()
 
         # Gradient clipping
-        grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+        trainable_params = [p for p in model.parameters() if p.requires_grad]
+        grad_norm = torch.nn.utils.clip_grad_norm_(trainable_params, max_norm=1.0)
 
         if HAS_WANDB and wandb.run is not None and batch_idx % 50 == 0:
             wandb.log({"batch_grad_norm": grad_norm.item()})
@@ -155,7 +163,14 @@ def validate(model, val_loader, criterion, device):
 
     with torch.no_grad():
         for batch_idx, batch in enumerate(tqdm(val_loader, desc="  Validating", leave=False)):
-            if len(batch) == 3:
+            turn_mask = None
+            if len(batch) == 4:
+                inputs, mask, turn_mask, labels = batch
+                inputs = inputs.to(device)
+                mask = mask.to(device)
+                turn_mask = turn_mask.to(device)
+                labels = labels.to(device)
+            elif len(batch) == 3:
                 inputs, mask, labels = batch
                 inputs = inputs.to(device)
                 mask = mask.to(device)
@@ -169,7 +184,9 @@ def validate(model, val_loader, criterion, device):
             if batch_idx == 0:
                 print(f"    [Shape] Val batch inputs: {inputs.shape}, labels: {labels.shape}")
 
-            if mask is not None:
+            if turn_mask is not None:
+                outputs = model(inputs, mask, turn_mask)
+            elif mask is not None:
                 outputs = model(inputs, mask)
             else:
                 outputs = model(inputs)

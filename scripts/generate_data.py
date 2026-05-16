@@ -175,9 +175,9 @@ async def main(args):
             json.dump(sequences, f, indent=2)
         print(f"  {split}: {len(sequences)} sequences -> {out_path}")
 
-    # Step 6: Strip AI responses from full-dialogue tiers
-    print("\nStripping AI responses from full-dialogue tiers...")
-    for tier in ["hard", "adversarial"]:
+    # Step 6: Strip AI responses from all tiers (LLM generates user+assistant for all)
+    print("\nStripping AI responses from all tiers...")
+    for tier in ["easy", "medium", "hard", "adversarial"]:
         for split in ["train", "val", "test"]:
             attack_path = output_dir / f"llm_{tier}_{split}_attacks.jsonl"
             if attack_path.exists():
@@ -216,10 +216,9 @@ async def main(args):
             threshold = 0.3 if tier == "adversarial" else 0.5
             for split in ["val", "test"]:
                 attack_path = output_dir / f"llm_{tier}_{split}_attacks.jsonl"
-                if tier in ("hard", "adversarial"):
-                    stripped_path = output_dir / f"llm_{tier}_{split}_attacks_stripped.jsonl"
-                    if stripped_path.exists():
-                        attack_path = stripped_path
+                stripped_path = output_dir / f"llm_{tier}_{split}_attacks_stripped.jsonl"
+                if stripped_path.exists():
+                    attack_path = stripped_path
                 if attack_path.exists():
                     sequences = []
                     with open(attack_path) as f:
@@ -249,13 +248,12 @@ async def main(args):
     for split in ["train", "val", "test"]:
         all_sequences = []
 
-        # Collect LLM attack sequences (stripped for hard/adversarial)
+        # Collect LLM attack sequences (prefer stripped versions for all tiers)
         for tier in ["easy", "medium", "hard", "adversarial"]:
             attack_path = output_dir / f"llm_{tier}_{split}_attacks.jsonl"
-            if tier in ("hard", "adversarial"):
-                stripped_path = output_dir / f"llm_{tier}_{split}_attacks_stripped.jsonl"
-                if stripped_path.exists():
-                    attack_path = stripped_path
+            stripped_path = output_dir / f"llm_{tier}_{split}_attacks_stripped.jsonl"
+            if stripped_path.exists():
+                attack_path = stripped_path
             if attack_path.exists():
                 with open(attack_path) as f:
                     for line in f:

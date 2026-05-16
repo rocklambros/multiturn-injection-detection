@@ -142,7 +142,7 @@ def create_multi_turn_loaders(vocab_path="models/vocab.json",
         print(f"\n{split}: {len(data)} sequences")
 
         # Extract turns and labels
-        turns_list = [[turn["text"] for turn in seq["turns"]] for seq in data]
+        turns_list = [[turn["text"] for turn in seq["turns"] if turn.get("role", "user") == "user"] for seq in data]
         labels_list = [seq["label"] for seq in data]
 
         token_ids, masks = encode_multiturn(vocab, turns_list, max_turns=max_turns, max_len=max_len)
@@ -193,7 +193,7 @@ class DistilBertMultiTurnDataset(Dataset):
 
     def __getitem__(self, idx):
         seq = self.sequences[idx]
-        turns = [t["text"] for t in seq["turns"]][:self.max_turns]
+        turns = [t["text"] for t in seq["turns"] if t.get("role", "user") == "user"][:self.max_turns]
         label = seq["label"]
 
         input_ids = torch.zeros(self.max_turns, self.max_len, dtype=torch.long)
@@ -234,7 +234,7 @@ class ConcatDistilBertDataset(Dataset):
 
     def __getitem__(self, idx):
         seq = self.sequences[idx]
-        turns = [t["text"] for t in seq["turns"]]
+        turns = [t["text"] for t in seq["turns"] if t.get("role", "user") == "user"]
         label = seq["label"]
         combined = " [SEP] ".join(turns)
         enc = self.tokenizer(

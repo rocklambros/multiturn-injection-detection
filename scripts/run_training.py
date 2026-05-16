@@ -46,6 +46,16 @@ def train_gru_retrain():
         wandb_config={"group": "training", "tags": ["v2", "gru", "retrain"]},
     )
 
+    import json
+    decision_path = "models/encoder_decision.json"
+    with open(decision_path) as f:
+        decision = json.load(f)
+    decision["best_single_turn_path"] = "models/v2_gru_retrain_best.pt"
+    decision["v2_retrained"] = True
+    with open(decision_path, "w") as f:
+        json.dump(decision, f, indent=2)
+    print(f"Updated {decision_path} to point to v2 retrained encoder")
+
 
 def train_iter5():
     """T3.3: Retrain iter5 multi-turn (mask-fixed, new data)."""
@@ -73,7 +83,7 @@ def train_iter5():
     )
 
     optimizer = torch.optim.Adam(
-        filter(lambda p: p.requires_grad, model.parameters()), lr=0.001,
+        filter(lambda p: p.requires_grad, model.parameters()), lr=3e-4,
     )
     criterion = nn.BCEWithLogitsLoss()
 
@@ -112,7 +122,7 @@ def train_iter6():
     )
 
     optimizer = torch.optim.Adam(
-        filter(lambda p: p.requires_grad, model.parameters()), lr=0.001,
+        filter(lambda p: p.requires_grad, model.parameters()), lr=3e-4,
     )
     criterion = nn.BCEWithLogitsLoss()
 

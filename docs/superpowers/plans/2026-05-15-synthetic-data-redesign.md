@@ -3603,6 +3603,381 @@ run_evaluation.py: compilation and bootstrap CI pipeline"
 
 ---
 
+---
+
+## Phase 7: Deliverable Updates (Tasks 22-27)
+
+**Dependencies:** Phase 5 complete (all metrics + bootstrap CIs available)
+
+**Context:** The existing notebook (52 cells, 13 sections) and report (212 lines) were written for the v1 data pipeline and pre-fix model results. They must be updated for: (a) v2 synthetic data pipeline, (b) BCE/mask/threshold bug fixes, (c) new DistilBERT baselines (PM-1a, PM-1b), (d) ablations (A10 voting, pooling variants), (e) bootstrap CIs. Additionally, the user needs a standalone research report focused solely on the final model — no iteration history or failure narrative.
+
+---
+
+### Task 22: Code Cleanup — Remove Stale and Unused Code
+
+**Files:**
+- Audit all `src/` and `scripts/` files
+- Remove dead imports, unused functions, stale commented-out code
+- Remove any files superseded by v2 implementations
+
+- [ ] **Step 1: Identify stale code**
+
+Run a comprehensive audit:
+```bash
+# Find unused imports across all Python files
+ruff check src/ scripts/ tests/ --select F401 --no-fix
+
+# Find files that may be superseded
+find src/ scripts/ -name "*.py" -exec grep -l "TODO\|DEPRECATED\|FIXME\|XXX" {} \;
+
+# Check for any backup/old files
+find . -name "*.bak" -o -name "*.old" -o -name "*_backup*" | grep -v node_modules
+```
+
+- [ ] **Step 2: Remove dead code**
+
+For each finding from Step 1:
+- Remove unused imports
+- Remove functions that are no longer called (verify with grep first)
+- Remove commented-out code blocks
+- Remove any `_v1` or `_old` suffixed files/functions that have v2 replacements
+
+- [ ] **Step 3: Verify nothing breaks**
+
+```bash
+python -m pytest tests/ -v
+python -c "from src.models import single_turn, multi_turn, attention; print('model imports ok')"
+python -c "from src.data import loader, partitioner, synthetic_v2; print('data imports ok')"
+ruff check src/ scripts/ tests/
+```
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add -A
+git commit -m "Remove stale code, dead imports, and superseded v1 artifacts"
+```
+
+---
+
+### Task 23: Update Notebook — Section 3 (Synthetic Data) for v2 Pipeline
+
+**Files:**
+- Modify: `notebooks/multiturn_injection_detection.ipynb` (Cell 9, Section 3)
+
+- [ ] **Step 1: Rewrite Section 3 markdown cell**
+
+Replace the existing Section 3 content with the v2 pipeline description:
+- Intent-based LLM generation (Sonnet 4.6): intents extracted from source texts, 4 strategies (fragment_distributed 40%, gradual_escalation 25%, context_priming 20%, instruction_layering 15%), 4 difficulty tiers (easy/medium/hard/adversarial)
+- Template-based fragment generation: offline, deterministic, same 4 strategies
+- 3-way source text partition with SHA-256 manifest (zero train/test leakage)
+- Validation gate: pre-trained single-turn classifier rejects sequences where any individual turn scores above threshold
+- Dataset sizes per tier and split
+- Show the partition manifest verification (zero overlap assertion)
+
+- [ ] **Step 2: Add/update code cell showing data loading and statistics**
+
+```python
+import json
+from pathlib import Path
+
+data_dir = Path("data/synthetic_v2")
+for split in ["train", "val", "test"]:
+    with open(data_dir / f"multiturn_{split}.json") as f:
+        seqs = json.load(f)
+    attacks = sum(1 for s in seqs if s.get("label") == 1)
+    benign = len(seqs) - attacks
+    print(f"{split}: {len(seqs)} total ({attacks} attack, {benign} benign)")
+
+# Show strategy distribution
+from collections import Counter
+with open(data_dir / "multiturn_train.json") as f:
+    train = json.load(f)
+strategies = Counter(s.get("strategy", "none") for s in train if s.get("label") == 1)
+for s, c in strategies.most_common():
+    print(f"  {s}: {c} ({c/sum(strategies.values())*100:.1f}%)")
+```
+
+- [ ] **Step 3: Verify cell runs**
+
+Run the cell in the notebook and confirm output matches expected dataset sizes.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add notebooks/multiturn_injection_detection.ipynb
+git commit -m "Update notebook Section 3 for v2 synthetic data pipeline"
+```
+
+---
+
+### Task 24: Update Notebook — Sections 9-11 (Multi-Turn Results) for Bug Fixes
+
+**Files:**
+- Modify: `notebooks/multiturn_injection_detection.ipynb` (Cells 31-38, Sections 9-11)
+
+- [ ] **Step 1: Update Section 9 (Iteration 5: Multi-Turn Classifier)**
+
+Update the markdown and code cells to reflect:
+- BCEWithLogitsLoss (not BCELoss with sigmoid in forward)
+- Correct mask application in sequence LSTM
+- Threshold tuned on val_loader (not test_loader)
+- Load new metrics from `results/iter5_multiturn/metrics.json`
+- Update the F1 gap narrative with corrected numbers
+
+- [ ] **Step 2: Update Section 10 (Iteration 6: Attention)**
+
+- Same BCE/mask fixes reflected
+- Load new metrics from `results/iter6_attention/metrics.json`
+- Update attention visualization if available
+
+- [ ] **Step 3: Update Section 11 (Iteration 7: Threshold Tuning)**
+
+- Show threshold sweep on validation set (not test set)
+- Load final metrics from `results/iter7_threshold/metrics.json`
+- Update precision-recall tradeoff analysis
+
+- [ ] **Step 4: Verify all updated cells run**
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add notebooks/multiturn_injection_detection.ipynb
+git commit -m "Update notebook Sections 9-11 with corrected multi-turn results"
+```
+
+---
+
+### Task 25: Add Notebook Sections — DistilBERT Baselines and Ablations
+
+**Files:**
+- Modify: `notebooks/multiturn_injection_detection.ipynb` (add cells after Section 8b)
+
+- [ ] **Step 1: Add Section 8c — DistilBERT Baselines (PM-1a, PM-1b)**
+
+Add markdown + code cells covering:
+- HierarchicalDistilBERT (PM-1a): architecture (frozen BERT → [CLS] → cross-turn transformer), 71.9M total / 5.5M trainable, results
+- ConcatenatedDistilBERT (PM-1b): architecture (all turns joined with [SEP], full fine-tuning), 66.4M all trainable, results
+- Comparison table: GRU dual-encoder (27K trainable) vs PM-1a (5.5M) vs PM-1b (66.4M)
+- Load metrics from `results/distilbert_hier/metrics.json` and `results/distilbert_concat/metrics.json`
+
+- [ ] **Step 2: Add Section 12b — Ablation Results**
+
+Add cells covering:
+- A10 turn-level voting (max, mean, top-3) — the critical ablation showing temporal modeling matters
+- A1 pooling variants (mean, max, weighted) — how aggregation affects performance
+- Table with all ablation results + bootstrap 95% CIs
+- Load metrics from `results/a10_*/metrics.json` and `results/a1_*/metrics.json`
+
+- [ ] **Step 3: Verify new cells run**
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add notebooks/multiturn_injection_detection.ipynb
+git commit -m "Add DistilBERT baseline and ablation sections to notebook"
+```
+
+---
+
+### Task 26: Update Notebook — Section 12 (Cross-Iteration Comparison) with Bootstrap CIs
+
+**Files:**
+- Modify: `notebooks/multiturn_injection_detection.ipynb` (Cells 39-46, Section 12)
+
+- [ ] **Step 1: Update the cross-iteration comparison table**
+
+Replace the existing table with a comprehensive version including:
+- All iterations (0-7) + DistilBERT baselines + ablations
+- F1, Precision, Recall with 95% bootstrap CIs (e.g., "0.847 [0.831, 0.863]")
+- Paired bootstrap significance tests between key comparisons:
+  - Single-turn best vs multi-turn (core finding)
+  - GRU dual-encoder vs DistilBERT baselines (efficiency argument)
+  - Multi-turn LSTM vs turn-level voting (temporal modeling argument)
+
+```python
+from src.evaluation.bootstrap import compute_all_cis, paired_bootstrap_test
+import numpy as np
+
+# Load all results and compute CIs
+# (code to load y_true, y_pred from each iteration's results)
+```
+
+- [ ] **Step 2: Update the comparison visualization**
+
+- Bar chart with error bars showing 95% CIs
+- Highlight statistically significant differences
+
+- [ ] **Step 3: Update "What Temporal Modeling Catches" analysis**
+
+- Refresh example analysis with v2 data examples
+- Show sequences where turn-level voting fails but LSTM succeeds
+
+- [ ] **Step 4: Verify cells run**
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add notebooks/multiturn_injection_detection.ipynb
+git commit -m "Update cross-iteration comparison with bootstrap CIs and significance tests"
+```
+
+---
+
+### Task 27: Update Courseware Report (report/final_report.md)
+
+**Files:**
+- Modify: `report/final_report.md`
+
+- [ ] **Step 1: Update Section 2.3 (Synthetic Multi-Turn Data)**
+
+Replace the v1 data description with v2:
+- Intent-based LLM generation methodology
+- Template-based fragment generation
+- 3-way partition with zero-leakage guarantee
+- Validation gate description
+- Dataset size table (per tier, per split)
+
+- [ ] **Step 2: Update Section 3 (Model Architecture)**
+
+- Add Sections 3.4-3.5 for HierarchicalDistilBERT and ConcatenatedDistilBERT
+- Note the BCE/mask/threshold fixes in the dual-encoder description
+- Add ablation descriptions (A10 voting, pooling variants)
+
+- [ ] **Step 3: Update Section 4 (Results)**
+
+- Replace all metrics with v2 results
+- Add bootstrap CIs to all reported numbers
+- Add DistilBERT baseline results
+- Add ablation results table
+- Update the core finding F1 gap with corrected numbers
+
+- [ ] **Step 4: Update Section 5 (Discussion)**
+
+- Update "Why Multi-Turn Works" with A10 voting evidence
+- Update limitations with v2-specific observations
+- Update future work
+
+- [ ] **Step 5: Verify markdown renders correctly**
+
+```bash
+# Check for broken links/references
+grep -n "\[.*\](.*)" report/final_report.md | head -20
+```
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add report/final_report.md
+git commit -m "Update courseware report for v2 data pipeline and corrected results"
+```
+
+---
+
+### Task 28: Standalone Research Report — New Model Deep Analysis
+
+**Files:**
+- Create: `report/research_report.md`
+
+This is a standalone report for publication-track review. It covers ONLY the final system design and results — no iteration history, no failure narrative, no "we tried X and it didn't work" sections.
+
+- [ ] **Step 1: Write Abstract and Introduction**
+
+- Problem: multi-turn distributed prompt injection detection
+- Gap: single-turn classifiers miss temporal attack patterns
+- Contribution: dual-encoder architecture (frozen single-turn GRU + trainable sequence LSTM) that detects attacks invisible to per-turn classification
+- Key result: F1 improvement with statistical significance
+
+- [ ] **Step 2: Write Related Work**
+
+- Crescendo attacks (Russinovich et al., USENIX Security 2025)
+- Foot-in-the-Door (EMNLP 2025)
+- Vassilev 2025 (Gödel incompleteness argument)
+- InjecGuard, ProtectAI DeBERTa
+- Position this work relative to existing defenses
+
+- [ ] **Step 3: Write Data section**
+
+- v2 synthetic data pipeline: intent extraction → LLM generation → template generation → validation gate
+- 4 attack strategies with rationale for each
+- 4 difficulty tiers with what makes each tier harder
+- 3-way partition design and zero-leakage guarantee
+- Dataset statistics table
+
+- [ ] **Step 4: Write Model Architecture section**
+
+- Dual-encoder design rationale (why frozen turn encoder + trainable sequence model)
+- Single-turn GRU encoder: architecture, training, what it captures
+- Sequence LSTM: how it accumulates cross-turn signal
+- Attention variant: what attention patterns reveal
+- Parameter efficiency argument (27K trainable vs 5.5M-66.4M for DistilBERT)
+
+- [ ] **Step 5: Write Baselines section**
+
+- TF-IDF + classical ML (SVM, Random Forest, Logistic Regression)
+- Per-turn classification (the single-turn ceiling)
+- Turn-level voting (A10: max, mean, top-k) — why naive aggregation fails
+- HierarchicalDistilBERT (PM-1a) — cross-turn transformer
+- ConcatenatedDistilBERT (PM-1b) — brute-force concatenation
+
+- [ ] **Step 6: Write Results section**
+
+- Main results table with bootstrap 95% CIs
+- Per-difficulty breakdown (easy through adversarial)
+- Per-strategy breakdown (which strategies are hardest to detect)
+- Statistical significance via paired bootstrap tests
+- Ablation results (pooling, voting, encoder gradient)
+
+- [ ] **Step 7: Write Analysis section**
+
+- What temporal modeling captures that per-turn classification misses (with examples)
+- Attention patterns: which turns the model focuses on
+- LSTM gate dynamics: how the model accumulates suspicion
+- Failure mode analysis: what the model still misses
+- Efficiency analysis: trainable parameters vs performance
+
+- [ ] **Step 8: Write Discussion and Conclusion**
+
+- Practical deployment considerations (Jetson inference latency, streaming detection)
+- Limitations (synthetic data, strategy coverage, adversarial robustness)
+- Future work (online learning, longer contexts, cross-domain transfer)
+- Future work: connect LSTM hidden-state trajectories to formal-verification approaches — our hidden states form a continuous safety-state trajectory, and the A10 vs LSTM gap provides empirical evidence about whether safety-state transitions satisfy the Markov property (relevant to Markov chain / formal-methods approaches to safety evaluation)
+
+- [ ] **Step 9: Verify and commit**
+
+```bash
+# Word count check (target: 4000-6000 words for workshop paper)
+wc -w report/research_report.md
+
+git add report/research_report.md
+git commit -m "Add standalone research report: multi-turn injection detection deep analysis"
+```
+
+---
+
+### Task 29: Update Presentation
+
+**Files:**
+- Modify: `report/presentation.md`
+
+- [ ] **Step 1: Update slides for v2 results**
+
+Key slides to update:
+- Data pipeline slide → v2 methodology (intent-based + template-based)
+- Results slide → corrected metrics with CIs
+- Add slide for DistilBERT comparison (efficiency argument)
+- Add slide for A10 voting ablation (temporal modeling argument)
+- Update conclusion slide
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add report/presentation.md
+git commit -m "Update presentation for v2 data and corrected results"
+```
+
+---
+
 ## Execution Sequence Summary
 
 ```
@@ -3641,4 +4016,17 @@ Phase 5                → Evaluation pipeline
                           GATE: All metrics have bootstrap CIs
 
 Phase 6                → Paper updates (manual + automated)
+
+Phase 7 (Tasks 22-29) → Deliverable updates
+                          Task 22: Code cleanup (stale imports, dead code, superseded files)
+                          Task 23: Notebook Section 3 — v2 data pipeline
+                          Task 24: Notebook Sections 9-11 — corrected multi-turn results
+                          Task 25: Notebook new sections — DistilBERT baselines + ablations
+                          Task 26: Notebook Section 12 — cross-iteration with bootstrap CIs
+                          Task 27: Courseware report update (report/final_report.md)
+                          Task 28: Standalone research report (report/research_report.md) — new model deep analysis only
+                          Task 29: Presentation update
+                          GATE: jupyter nbconvert --execute passes
+                          GATE: Research report 4000-6000 words
+                          GATE: All reported metrics have bootstrap CIs
 ```
