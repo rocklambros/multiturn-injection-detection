@@ -7,10 +7,34 @@ injection intents + strategy descriptions.
 import asyncio
 import json
 import hashlib
+import re
 import time
 from pathlib import Path
 
 import anthropic
+
+
+_JSON_FENCE_RE = re.compile(r'```(?:json)?\s*\n?(.*?)\n?\s*```', re.DOTALL)
+
+
+def _extract_json(text):
+    """Extract a JSON array from LLM response, handling markdown fences."""
+    text = text.strip()
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+    match = _JSON_FENCE_RE.search(text)
+    if match:
+        return json.loads(match.group(1).strip())
+
+    start = text.find('[')
+    end = text.rfind(']')
+    if start != -1 and end > start:
+        return json.loads(text[start:end + 1])
+
+    raise json.JSONDecodeError("No JSON array found", text, 0)
 
 
 STRATEGY_PROMPTS = {
@@ -143,7 +167,7 @@ async def generate_one(client, intent, strategy, difficulty, num_turns, model="c
             )
 
             response_text = response.content[0].text
-            turns = json.loads(response_text)
+            turns = _extract_json(response_text)
 
             return {
                 "turns": turns,
@@ -160,6 +184,9 @@ async def generate_one(client, intent, strategy, difficulty, num_turns, model="c
                 "output_tokens": response.usage.output_tokens,
             }
         except (json.JSONDecodeError, IndexError, KeyError) as e:
+            if attempt < max_retries - 1:
+                await asyncio.sleep(2 ** attempt)
+                continue
             return {
                 "error": str(e),
                 "intent": intent,
