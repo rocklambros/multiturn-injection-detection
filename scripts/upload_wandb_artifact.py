@@ -54,7 +54,7 @@ def main():
     print("\nAdding files to artifact...")
 
     for f in required_files:
-        art.add_file(f)
+        art.add_file(f, name=f)
         size_mb = os.path.getsize(f) / 1e6
         print(f"  {f} ({size_mb:.1f} MB)")
 
@@ -65,7 +65,7 @@ def main():
         "data/synthetic_v2/intents.json",
     ]:
         for f in sorted(glob.glob(pattern)):
-            art.add_file(f)
+            art.add_file(f, name=f)
             size_mb = os.path.getsize(f) / 1e6
             print(f"  {f} ({size_mb:.1f} MB)")
 
