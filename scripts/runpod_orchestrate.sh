@@ -82,7 +82,7 @@ log "=== Step 1: Provisioning ${#TASKS[@]} pods ==="
 for task in "${TASKS[@]}"; do
     log "  Creating pod for: $task"
 
-    STARTUP_CMD="echo '$WANDB_KEY' > /root/.wandb_key && apt-get update -qq && apt-get install -y -qq git > /dev/null 2>&1 && git clone https://github.com/rocklambros/multiturn-injection-detection.git /workspace/multiturn-injection-detection 2>/dev/null && cd /workspace/multiturn-injection-detection && pip install -q -r requirements.txt 2>&1 | tail -1 && bash scripts/bootstrap_runpod.sh $task 2>&1 | tee /workspace/${task}.log; echo EXIT_CODE=\$? >> /workspace/${task}.log"
+    STARTUP_CMD="echo '$WANDB_KEY' > /root/.wandb_key && apt-get update -qq && apt-get install -y -qq git > /dev/null 2>&1 && git clone -b feature/phase3-training-pipeline https://github.com/rocklambros/multiturn-injection-detection.git /workspace/multiturn-injection-detection 2>/dev/null && cd /workspace/multiturn-injection-detection && pip install -q -r requirements.txt 2>&1 | tail -1 && bash scripts/bootstrap_runpod.sh $task 2>&1 | tee /workspace/${task}.log; echo EXIT_CODE=\$? >> /workspace/${task}.log"
 
     POD_ID=$(runpodctl create pod \
         --name "train-${task}" \

@@ -4,6 +4,7 @@ set -euo pipefail
 TASK="${1:-}"
 WANDB_KEY_FILE="/root/.wandb_key"
 REPO_URL="https://github.com/rocklambros/multiturn-injection-detection.git"
+REPO_BRANCH="${REPO_BRANCH:-feature/phase3-training-pipeline}"
 REPO_DIR="/workspace/multiturn-injection-detection"
 ARTIFACT="rockcyber/multiturn-injection-detection-v2/synthetic_v2_data:latest"
 HEARTBEAT_INTERVAL=60
@@ -74,12 +75,13 @@ log "Setting up repository..."
 if [ -d "$REPO_DIR/.git" ]; then
     cd "$REPO_DIR"
     git fetch origin
-    git reset --hard origin/main
-    log "Repository updated"
+    git checkout "$REPO_BRANCH" 2>/dev/null || git checkout -b "$REPO_BRANCH" "origin/$REPO_BRANCH"
+    git reset --hard "origin/$REPO_BRANCH"
+    log "Repository updated (branch: $REPO_BRANCH)"
 else
-    git clone "$REPO_URL" "$REPO_DIR"
+    git clone -b "$REPO_BRANCH" "$REPO_URL" "$REPO_DIR"
     cd "$REPO_DIR"
-    log "Repository cloned"
+    log "Repository cloned (branch: $REPO_BRANCH)"
 fi
 
 log "Installing dependencies..."
