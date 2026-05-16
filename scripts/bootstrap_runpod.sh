@@ -3,7 +3,7 @@ set -euo pipefail
 
 TASK="${1:-}"
 WANDB_KEY_FILE="/root/.wandb_key"
-REPO_URL="git@github.com:rocklambros/multiturn-injection-detection.git"
+GH_TOKEN_FILE="/root/.gh_token"
 REPO_BRANCH="${REPO_BRANCH:-feature/v3-clean-retrain}"
 REPO_DIR="/workspace/multiturn-injection-detection"
 ARTIFACT="rockcyber/multiturn-injection-detection-v2/synthetic_v3_data:latest"
@@ -78,8 +78,18 @@ log "WandB key configured: ${WANDB_API_KEY:0:15}..."
 
 # --- Clone and setup ---
 log "Setting up repository..."
+if [ -f "$GH_TOKEN_FILE" ]; then
+    GH_TOKEN=$(cat "$GH_TOKEN_FILE")
+elif [ -n "${GH_TOKEN:-}" ]; then
+    true
+else
+    die "GitHub token not found. Set GH_TOKEN env var or put token in $GH_TOKEN_FILE"
+fi
+REPO_URL="https://${GH_TOKEN}@github.com/rocklambros/multiturn-injection-detection.git"
+
 if [ -d "$REPO_DIR/.git" ]; then
     cd "$REPO_DIR"
+    git remote set-url origin "$REPO_URL"
     git fetch origin
     git checkout "$REPO_BRANCH" 2>/dev/null || git checkout -b "$REPO_BRANCH" "origin/$REPO_BRANCH"
     git reset --hard "origin/$REPO_BRANCH"

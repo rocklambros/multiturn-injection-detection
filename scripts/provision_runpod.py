@@ -1,13 +1,20 @@
-"""Provision and monitor 5 RunPod H100 pods for parallel training.
+"""Provision and monitor RunPod GPU pods for v3 parallel training.
+
+Execution order:
+  Phase 1: gru_retrain (must complete first — produces frozen encoder)
+  Phase 2: All 11 remaining tasks in parallel
 
 Uses the RunPod Python SDK (v1.9.0+) to:
-1. Create 5 pods with H100 SXM GPUs (fallback to H100 PCIe, then A100 80GB)
+1. Create pods with best available GPUs
 2. Monitor training completion via WandB artifact checks
 3. Download results when complete
 4. Terminate pods automatically
 
 Usage:
-    export RUNPOD_API_KEY=$(pass show runpod/api-key)
+    python scripts/provision_runpod.py --phase 1   # Launch gru_retrain only
+    python scripts/provision_runpod.py --phase 2   # Launch all 11 parallel tasks
+    python scripts/provision_runpod.py --status     # Check pod status
+    python scripts/provision_runpod.py --terminate  # Terminate all v3 pods
     python scripts/provision_runpod.py [--dry-run] [--tasks gru_retrain,iter5]
 """
 
@@ -35,21 +42,26 @@ TASKS_ABLATIONS = [
     "ablation_mean_pool", "ablation_max_pool",
 ]
 TASKS = TASKS_CORE + TASKS_ABLATIONS
+PHASE_1_TASKS = ["gru_retrain"]
+PHASE_2_TASKS = [
+    "iter5", "iter6",
+    "distilbert_hier", "distilbert_concat",
+    "ablation_shuffled", "ablation_reversed",
+    "ablation_prefix", "ablation_continuation",
+    "ablation_autoencoder", "ablation_mean_pool", "ablation_max_pool",
+]
 GPU_PREFERENCES = [
+    "NVIDIA RTX A6000",
     "NVIDIA L40S",
+    "NVIDIA L40",
     "NVIDIA A100 80GB PCIe",
     "NVIDIA A100-SXM4-80GB",
-    "NVIDIA L40",
     "NVIDIA RTX 4090",
-    "NVIDIA RTX A6000",
-    "NVIDIA H100 80GB HBM3",
-    "NVIDIA H100 PCIe",
 ]
 IMAGE = "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04"
 VOLUME_SIZE = 50
 CONTAINER_DISK = 20
 PROJECT = "rockcyber/multiturn-injection-detection-v2"
-REPO_URL = "git@github.com:rocklambros/multiturn-injection-detection.git"
 REPO_BRANCH = "feature/v3-clean-retrain"
 MAX_WAIT_SECONDS = 7200
 POLL_INTERVAL = 45
@@ -82,29 +94,31 @@ def get_wandb_key():
     return None
 
 
-def get_deploy_key():
-    import base64
-    key_path = "/tmp/runpod_deploy_key"
-    if os.path.exists(key_path):
-        with open(key_path, "rb") as f:
-            return base64.b64encode(f.read()).decode()
+def get_gh_token():
+    token = os.environ.get("GH_TOKEN", "")
+    if token:
+        return token
+    try:
+        result = subprocess.run(
+            ["pass", "show", "openclaw/github/token"],
+            capture_output=True, text=True, timeout=10
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return result.stdout.strip()
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
     return None
 
 
 def build_startup_command(task):
-    # Wrap in bash -c so shell operators (&, &&, ;) are interpreted.
-    # nvidia_entrypoint.sh uses exec "$@" which passes args without
-    # shell interpretation; bash -c forces a shell context.
     inner = (
         "/start.sh & "
         "sleep 5 && "
         "echo $WANDB_API_KEY > /root/.wandb_key && "
-        "mkdir -p /root/.ssh && "
-        "echo $DEPLOY_KEY_B64 | base64 -d > /root/.ssh/id_ed25519 && "
-        "chmod 600 /root/.ssh/id_ed25519 && "
-        "ssh-keyscan github.com >> /root/.ssh/known_hosts 2>/dev/null && "
-        f"git clone -b {REPO_BRANCH} {REPO_URL} /workspace/mt && "
-        "cd /workspace/mt && "
+        "echo $GH_TOKEN > /root/.gh_token && "
+        f"REPO_URL=https://${{GH_TOKEN}}@github.com/rocklambros/multiturn-injection-detection.git && "
+        f"git clone -b {REPO_BRANCH} $REPO_URL /workspace/multiturn-injection-detection && "
+        "cd /workspace/multiturn-injection-detection && "
         "pip install -q -r requirements.txt 2>&1 | tail -1 && "
         f"bash scripts/bootstrap_runpod.sh {task} 2>&1 | tee /workspace/{task}.log; "
         "sleep infinity"
@@ -112,9 +126,9 @@ def build_startup_command(task):
     return f"bash -c '{inner}'"
 
 
-def create_pod(task, wandb_key, deploy_key, gpu_type, dry_run=False):
+def create_pod(task, wandb_key, gh_token, gpu_type, dry_run=False):
     startup_cmd = build_startup_command(task)
-    pod_name = f"train-{task}"
+    pod_name = f"v3-{task}"
 
     if dry_run:
         log(f"  [DRY RUN] Would create pod '{pod_name}' with {gpu_type}")
@@ -131,21 +145,21 @@ def create_pod(task, wandb_key, deploy_key, gpu_type, dry_run=False):
         ports="22/tcp",
         env={
             "WANDB_API_KEY": wandb_key,
-            "DEPLOY_KEY_B64": deploy_key,
+            "GH_TOKEN": gh_token,
         },
         min_download=500,
     )
     return pod
 
 
-def provision_all(tasks, wandb_key, deploy_key, dry_run=False):
+def provision_all(tasks, wandb_key, gh_token, dry_run=False):
     pods = {}
     for task in tasks:
         last_error = None
         for gpu_type in GPU_PREFERENCES:
             try:
                 log(f"  Creating pod for {task} on {gpu_type}...")
-                pod = create_pod(task, wandb_key, deploy_key, gpu_type, dry_run)
+                pod = create_pod(task, wandb_key, gh_token, gpu_type, dry_run)
                 pod_id = pod.get("id", "unknown")
                 pods[task] = {
                     "id": pod_id,
@@ -288,15 +302,43 @@ def terminate_all(pods):
                 pass
 
 
+def status_all():
+    pods = runpod.get_pods()
+    v3_pods = [p for p in pods if p.get("name", "").startswith("v3-")]
+    if not v3_pods:
+        log("No v3 pods found.")
+        return
+    log(f"{'Name':<30} {'Status':<12} {'GPU':<25} {'Uptime'}")
+    log("-" * 80)
+    for p in v3_pods:
+        rt = p.get("runtime") or {}
+        uptime = (rt.get("uptimeInSeconds") or 0) // 60
+        gpu = (p.get("machine") or {}).get("gpuDisplayName", "?")
+        log(f"{p['name']:<30} {p.get('desiredStatus', '?'):<12} {gpu:<25} {uptime}m")
+
+
+def terminate_v3_pods():
+    pods = runpod.get_pods()
+    v3_pods = [p for p in pods if p.get("name", "").startswith("v3-")]
+    if not v3_pods:
+        log("No v3 pods to terminate.")
+        return
+    for p in v3_pods:
+        log(f"Terminating {p['name']} ({p['id']})...")
+        runpod.terminate_pod(p["id"])
+    log(f"Terminated {len(v3_pods)} pods.")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Provision RunPod training pods")
     parser.add_argument("--dry-run", action="store_true", help="Show what would be created")
     parser.add_argument("--tasks", type=str, default=None, help="Comma-separated task list")
+    parser.add_argument("--phase", type=int, choices=[1, 2], help="Phase 1: gru_retrain, Phase 2: all others")
+    parser.add_argument("--status", action="store_true", help="Check status of all v3 pods")
+    parser.add_argument("--terminate", action="store_true", help="Terminate all v3 pods")
     parser.add_argument("--monitor-only", action="store_true", help="Skip provisioning, just monitor")
     parser.add_argument("--download-only", action="store_true", help="Skip provisioning, just download")
     args = parser.parse_args()
-
-    tasks = args.tasks.split(",") if args.tasks else TASKS
 
     api_key = os.environ.get("RUNPOD_API_KEY")
     if not api_key:
@@ -314,21 +356,38 @@ def main():
 
     runpod.api_key = api_key
 
+    if args.status:
+        status_all()
+        return
+
+    if args.terminate:
+        terminate_v3_pods()
+        return
+
+    if args.tasks:
+        tasks = args.tasks.split(",")
+    elif args.phase == 1:
+        tasks = PHASE_1_TASKS
+    elif args.phase == 2:
+        tasks = PHASE_2_TASKS
+    else:
+        tasks = TASKS
+
     wandb_key = get_wandb_key()
     if not wandb_key:
         print("ERROR: No WandB API key found.")
         sys.exit(1)
 
-    deploy_key = get_deploy_key()
-    if not deploy_key:
-        print("ERROR: No deploy key at /tmp/runpod_deploy_key.")
+    gh_token = get_gh_token()
+    if not gh_token:
+        print("ERROR: No GitHub token found. Set GH_TOKEN or add to pass store.")
         sys.exit(1)
 
     log(f"=== RunPod {len(tasks)}-GPU Parallel Training ===")
     log(f"Tasks: {', '.join(tasks)}")
     log(f"GPU preference order: {', '.join(GPU_PREFERENCES)}")
     log(f"WandB key: {wandb_key[:8]}...")
-    log(f"Deploy key: {deploy_key[:30]}...")
+    log(f"GH token: {gh_token[:8]}...")
     log(f"Branch: {REPO_BRANCH}")
     log("")
 
@@ -339,13 +398,19 @@ def main():
         return
 
     log("=== Step 1: Provisioning pods ===")
-    pods = provision_all(tasks, wandb_key, deploy_key, dry_run=args.dry_run)
+    pods = provision_all(tasks, wandb_key, gh_token, dry_run=args.dry_run)
 
     created = sum(1 for p in pods.values() if p.get("id"))
     log(f"\n{created}/{len(tasks)} pods created")
     if created == 0:
         log("FATAL: No pods created. Exiting.")
         sys.exit(1)
+
+    manifest_path = Path("data/synthetic_v3/runpod_pods.json")
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(manifest_path, "w") as f:
+        json.dump({t: {"id": i.get("id"), "gpu": i.get("gpu")} for t, i in pods.items()}, f, indent=2)
+    log(f"Pod manifest: {manifest_path}")
 
     log("\n=== Step 2: Monitoring training ===")
     try:
@@ -365,6 +430,11 @@ def main():
         gpu = info.get("gpu", "?")
         symbol = "OK" if status == "DONE" else "FAIL"
         log(f"  [{symbol}] {task} — {status} in {duration:.0f}s ({gpu})")
+
+    total_hrs = sum(
+        (i.get("duration", 0) / 3600) for i in pods.values() if i.get("status") == "DONE"
+    )
+    log(f"\nEstimated cost: ${total_hrs * 0.33:.2f} (at $0.33/hr RTX A6000)")
 
     failed_count = sum(1 for i in pods.values() if i.get("status") != "DONE")
     if failed_count > 0:
