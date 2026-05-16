@@ -63,12 +63,15 @@ GPU_NAME=$(python3 -c "import torch; print(torch.cuda.get_device_name(0))")
 GPU_MEM=$(python3 -c "import torch; p=torch.cuda.get_device_properties(0); m=getattr(p,'total_memory',getattr(p,'total_mem',0)); print(f'{m/1e9:.1f}GB')")
 log "GPU: $GPU_NAME ($GPU_MEM)"
 
-[ -f "$WANDB_KEY_FILE" ] || die "WandB key not found at $WANDB_KEY_FILE. Run: echo 'YOUR_KEY' > $WANDB_KEY_FILE"
-export WANDB_API_KEY=$(cat "$WANDB_KEY_FILE")
-[ -n "$WANDB_API_KEY" ] || die "WandB key file is empty"
+if [ -f "$WANDB_KEY_FILE" ]; then
+    export WANDB_API_KEY=$(cat "$WANDB_KEY_FILE")
+fi
+[ -n "$WANDB_API_KEY" ] || die "WandB key not found. Set WANDB_API_KEY env var or put key in $WANDB_KEY_FILE"
 
-wandb login --relogin 2>/dev/null || die "WandB login failed"
-log "WandB authenticated"
+wandb login "$WANDB_API_KEY" 2>&1 || wandb login --relogin "$WANDB_API_KEY" 2>&1 || {
+    log "WARN: wandb login command failed, proceeding with env var only"
+}
+log "WandB key configured: ${WANDB_API_KEY:0:15}..."
 
 # --- Clone and setup ---
 log "Setting up repository..."
