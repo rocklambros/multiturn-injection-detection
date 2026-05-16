@@ -85,27 +85,24 @@ def get_deploy_key():
     return None
 
 
-def build_startup_command(task, wandb_key, deploy_key_b64):
-    ssh_setup = (
-        f"mkdir -p /root/.ssh && "
-        f"echo '{deploy_key_b64}' | base64 -d > /root/.ssh/id_ed25519 && "
-        f"chmod 600 /root/.ssh/id_ed25519 && "
-        f"ssh-keyscan github.com >> /root/.ssh/known_hosts 2>/dev/null && "
-    )
+def build_startup_command(task):
     return (
-        f"echo '{wandb_key}' > /root/.wandb_key && "
-        f"{ssh_setup}"
-        f"apt-get update -qq && apt-get install -y -qq git > /dev/null 2>&1 && "
+        "mkdir -p /root/.ssh && "
+        "echo $DEPLOY_KEY_B64 | base64 -d > /root/.ssh/id_ed25519 && "
+        "chmod 600 /root/.ssh/id_ed25519 && "
+        "ssh-keyscan github.com >> /root/.ssh/known_hosts 2>/dev/null && "
+        "echo $WANDB_API_KEY > /root/.wandb_key && "
+        "apt-get update -qq && apt-get install -y -qq git > /dev/null 2>&1 && "
         f"git clone -b {REPO_BRANCH} {REPO_URL} /workspace/mt 2>/dev/null && "
-        f"cd /workspace/mt && "
-        f"pip install -q -r requirements.txt 2>&1 | tail -1 && "
+        "cd /workspace/mt && "
+        "pip install -q -r requirements.txt 2>&1 | tail -1 && "
         f"bash scripts/bootstrap_runpod.sh {task} 2>&1 | tee /workspace/{task}.log; "
         f"echo EXIT_CODE=$? >> /workspace/{task}.log"
     )
 
 
 def create_pod(task, wandb_key, deploy_key, gpu_type, dry_run=False):
-    startup_cmd = build_startup_command(task, wandb_key, deploy_key)
+    startup_cmd = build_startup_command(task)
     pod_name = f"train-{task}"
 
     if dry_run:
@@ -120,6 +117,10 @@ def create_pod(task, wandb_key, deploy_key, gpu_type, dry_run=False):
         volume_in_gb=VOLUME_SIZE,
         container_disk_in_gb=CONTAINER_DISK,
         docker_args=startup_cmd,
+        env={
+            "WANDB_API_KEY": wandb_key,
+            "DEPLOY_KEY_B64": deploy_key,
+        },
         min_download=500,
     )
     return pod
