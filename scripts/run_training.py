@@ -47,10 +47,10 @@ def train_gru_retrain():
     )
 
     import json
-    decision_path = "models/encoder_decision.json"
+    decision_path = "results/encoder_decision.json"
     with open(decision_path) as f:
         decision = json.load(f)
-    decision["best_single_turn_path"] = "models/v2_gru_retrain_best.pt"
+    decision["best_single_turn_path"] = "models/v2_gru_retrain.pt"
     decision["v2_retrained"] = True
     with open(decision_path, "w") as f:
         json.dump(decision, f, indent=2)
