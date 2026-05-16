@@ -29,8 +29,8 @@ dotenv.load_dotenv()
 from src.utils.seed import set_global_seed  # noqa: E402
 from src.data.partitioner import partition_source_texts  # noqa: E402
 from src.data.intent_extractor import extract_intents_batch, deduplicate_intents  # noqa: E402
-from src.data.batch_generator import generate_batch  # noqa: E402
-from src.data.synthetic_v2 import build_attack_sequence, build_benign_sequence  # noqa: E402
+from src.data.batch_generator import generate_batch, generate_benign_batch  # noqa: E402
+from src.data.synthetic_v2 import build_attack_sequence, build_benign_sequence, filter_benign_pool  # noqa: E402
 from src.data.response_stripper import strip_batch  # noqa: E402
 from src.data.manifest import create_manifest  # noqa: E402
 
@@ -138,35 +138,56 @@ async def main(args):
                 )
                 generation_stats[f"{tier}_{split}"] = stats
 
-    # Step 4: Generate BENIGN sequences for LLM tiers (template-based, matched 1:1)
-    print("\nGenerating benign sequences for LLM tiers...")
-    for tier in ["easy", "medium", "hard", "adversarial"]:
-        for split in ["train", "val", "test"]:
-            benign_count = TIER_SIZES[tier][split] // 2
-            benign_seqs = []
-            usage_counts = {}
-            for i in range(benign_count):
-                num_turns = random.randint(3, 10)
-                seq = build_benign_sequence(
-                    manifest["benign_pools"][split], num_turns, usage_counts,
+    # Step 4: Generate BENIGN sequences for LLM tiers (LLM-generated to match attack style)
+    benign_stats = {}
+    if not args.template_only:
+        print("\nGenerating LLM benign sequences for LLM tiers...")
+        for tier in ["easy", "medium", "hard", "adversarial"]:
+            for split in ["train", "val", "test"]:
+                benign_count = TIER_SIZES[tier][split] // 2
+                print(f"\nGenerating {tier}/{split}: {benign_count} benign sequences...")
+                stats = await generate_benign_batch(
+                    count=benign_count,
+                    difficulty=tier,
+                    num_turns_range=(3, 10),
+                    output_path=output_dir / f"llm_{tier}_{split}_benign.jsonl",
+                    max_concurrent=args.max_concurrent,
                 )
-                seq["id"] = f"llm_{tier}_benign_{split}_{i}"
-                seq["difficulty"] = tier
-                seq["generation_method"] = "template_benign"
-                benign_seqs.append(seq)
+                benign_stats[f"{tier}_{split}_benign"] = stats
+    else:
+        print("\nGenerating template benign sequences for LLM tiers (--template-only)...")
+        for tier in ["easy", "medium", "hard", "adversarial"]:
+            for split in ["train", "val", "test"]:
+                benign_count = TIER_SIZES[tier][split] // 2
+                benign_seqs = []
+                usage_counts = {}
+                filtered_pool = filter_benign_pool(manifest["benign_pools"][split])
+                for i in range(benign_count):
+                    num_turns = random.randint(3, 10)
+                    seq = build_benign_sequence(
+                        filtered_pool, num_turns, usage_counts,
+                    )
+                    seq["id"] = f"llm_{tier}_benign_{split}_{i}"
+                    seq["difficulty"] = tier
+                    benign_seqs.append(seq)
 
-            out_path = output_dir / f"llm_{tier}_{split}_benign.jsonl"
-            with open(out_path, "w") as f:
-                for seq in benign_seqs:
-                    f.write(json.dumps(seq) + "\n")
-            print(f"  {tier}/{split}: {len(benign_seqs)} benign sequences")
+                out_path = output_dir / f"llm_{tier}_{split}_benign.jsonl"
+                with open(out_path, "w") as f:
+                    for seq in benign_seqs:
+                        f.write(json.dumps(seq) + "\n")
+                print(f"  {tier}/{split}: {len(benign_seqs)} benign sequences")
 
     # Step 5: Template-based generation (attacks + benign, self-contained tier)
+    print("\nFiltering benign pools for template generation...")
+    filtered_benign_pools = {}
+    for split in ["train", "val", "test"]:
+        filtered_benign_pools[split] = filter_benign_pool(manifest["benign_pools"][split])
+
     print("\nGenerating template-based sequences...")
     for split in ["train", "val", "test"]:
         sequences = generate_template_split(
             injection_pool=manifest["injection_pools"][split],
-            benign_pool=manifest["benign_pools"][split],
+            benign_pool=filtered_benign_pools[split],
             size=TIER_SIZES["template"][split],
             seed=42 + hash(split),
         )
@@ -175,24 +196,26 @@ async def main(args):
             json.dump(sequences, f, indent=2)
         print(f"  {split}: {len(sequences)} sequences -> {out_path}")
 
-    # Step 6: Strip AI responses from all tiers (LLM generates user+assistant for all)
+    # Step 6: Strip AI responses from all tiers (LLM generates user+assistant for hard/adversarial)
     print("\nStripping AI responses from all tiers...")
     for tier in ["easy", "medium", "hard", "adversarial"]:
         for split in ["train", "val", "test"]:
-            attack_path = output_dir / f"llm_{tier}_{split}_attacks.jsonl"
-            if attack_path.exists():
+            for kind in ["attacks", "benign"]:
+                src_path = output_dir / f"llm_{tier}_{split}_{kind}.jsonl"
+                if not src_path.exists():
+                    continue
                 sequences = []
-                with open(attack_path) as f:
+                with open(src_path) as f:
                     for line in f:
                         seq = json.loads(line)
                         if "error" not in seq:
                             sequences.append(seq)
                 stripped = strip_batch(sequences)
-                out_path = output_dir / f"llm_{tier}_{split}_attacks_stripped.jsonl"
+                out_path = output_dir / f"llm_{tier}_{split}_{kind}_stripped.jsonl"
                 with open(out_path, "w") as f:
                     for seq in stripped:
                         f.write(json.dumps(seq) + "\n")
-                print(f"  Stripped {tier}/{split}: {len(stripped)} sequences")
+                print(f"  Stripped {tier}/{split}/{kind}: {len(stripped)} sequences")
 
     # Step 7: Run validation gate on all generated sequences
     gate_model_path = Path("models/v2_gru_retrain_best.pt")
@@ -248,25 +271,18 @@ async def main(args):
     for split in ["train", "val", "test"]:
         all_sequences = []
 
-        # Collect LLM attack sequences (prefer stripped versions for all tiers)
+        # Collect LLM sequences (prefer stripped versions for all tiers)
         for tier in ["easy", "medium", "hard", "adversarial"]:
-            attack_path = output_dir / f"llm_{tier}_{split}_attacks.jsonl"
-            stripped_path = output_dir / f"llm_{tier}_{split}_attacks_stripped.jsonl"
-            if stripped_path.exists():
-                attack_path = stripped_path
-            if attack_path.exists():
-                with open(attack_path) as f:
-                    for line in f:
-                        seq = json.loads(line)
-                        if "error" not in seq:
-                            all_sequences.append(seq)
-
-            # Collect matching benign sequences
-            benign_path = output_dir / f"llm_{tier}_{split}_benign.jsonl"
-            if benign_path.exists():
-                with open(benign_path) as f:
-                    for line in f:
-                        all_sequences.append(json.loads(line))
+            for kind in ["attacks", "benign"]:
+                raw_path = output_dir / f"llm_{tier}_{split}_{kind}.jsonl"
+                stripped_path = output_dir / f"llm_{tier}_{split}_{kind}_stripped.jsonl"
+                src_path = stripped_path if stripped_path.exists() else raw_path
+                if src_path.exists():
+                    with open(src_path) as f:
+                        for line in f:
+                            seq = json.loads(line)
+                            if "error" not in seq:
+                                all_sequences.append(seq)
 
         # Add template sequences
         template_path = output_dir / f"template_{split}.json"
