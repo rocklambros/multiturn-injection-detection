@@ -4,7 +4,7 @@ set -euo pipefail
 TASK="${1:-}"
 WANDB_KEY_FILE="/root/.wandb_key"
 REPO_URL="https://github.com/rocklambros/multiturn-injection-detection.git"
-REPO_BRANCH="${REPO_BRANCH:-feature/phase3-training-pipeline}"
+REPO_BRANCH="${REPO_BRANCH:-feature/v3-clean-retrain}"
 REPO_DIR="/workspace/multiturn-injection-detection"
 ARTIFACT="rockcyber/multiturn-injection-detection-v2/synthetic_v2_data:latest"
 HEARTBEAT_INTERVAL=60

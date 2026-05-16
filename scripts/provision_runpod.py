@@ -40,7 +40,7 @@ VOLUME_SIZE = 50
 CONTAINER_DISK = 20
 PROJECT = "rockcyber/multiturn-injection-detection-v2"
 REPO_URL = "https://github.com/rocklambros/multiturn-injection-detection.git"
-REPO_BRANCH = "feature/phase3-training-pipeline"
+REPO_BRANCH = "feature/v3-clean-retrain"
 MAX_WAIT_SECONDS = 7200
 POLL_INTERVAL = 45
 
