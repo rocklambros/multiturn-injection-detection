@@ -39,7 +39,7 @@ IMAGE = "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04"
 VOLUME_SIZE = 50
 CONTAINER_DISK = 20
 PROJECT = "rockcyber/multiturn-injection-detection-v2"
-REPO_URL = "https://github.com/rocklambros/multiturn-injection-detection.git"
+REPO_URL = "git@github.com:rocklambros/multiturn-injection-detection.git"
 REPO_BRANCH = "feature/v3-clean-retrain"
 MAX_WAIT_SECONDS = 7200
 POLL_INTERVAL = 45
@@ -72,9 +72,24 @@ def get_wandb_key():
     return None
 
 
-def build_startup_command(task, wandb_key):
+def get_deploy_key():
+    key_path = "/tmp/runpod_deploy_key"
+    if os.path.exists(key_path):
+        with open(key_path) as f:
+            return f.read().strip()
+    return None
+
+
+def build_startup_command(task, wandb_key, deploy_key):
+    ssh_setup = (
+        f"mkdir -p /root/.ssh && "
+        f"echo '{deploy_key}' > /root/.ssh/id_ed25519 && "
+        f"chmod 600 /root/.ssh/id_ed25519 && "
+        f"ssh-keyscan github.com >> /root/.ssh/known_hosts 2>/dev/null && "
+    )
     return (
         f"echo '{wandb_key}' > /root/.wandb_key && "
+        f"{ssh_setup}"
         f"apt-get update -qq && apt-get install -y -qq git > /dev/null 2>&1 && "
         f"git clone -b {REPO_BRANCH} {REPO_URL} /workspace/mt 2>/dev/null && "
         f"cd /workspace/mt && "
@@ -84,8 +99,8 @@ def build_startup_command(task, wandb_key):
     )
 
 
-def create_pod(task, wandb_key, gpu_type, dry_run=False):
-    startup_cmd = build_startup_command(task, wandb_key)
+def create_pod(task, wandb_key, deploy_key, gpu_type, dry_run=False):
+    startup_cmd = build_startup_command(task, wandb_key, deploy_key)
     pod_name = f"train-{task}"
 
     if dry_run:
@@ -105,14 +120,14 @@ def create_pod(task, wandb_key, gpu_type, dry_run=False):
     return pod
 
 
-def provision_all(tasks, wandb_key, dry_run=False):
+def provision_all(tasks, wandb_key, deploy_key, dry_run=False):
     pods = {}
     for task in tasks:
         last_error = None
         for gpu_type in GPU_PREFERENCES:
             try:
                 log(f"  Creating pod for {task} on {gpu_type}...")
-                pod = create_pod(task, wandb_key, gpu_type, dry_run)
+                pod = create_pod(task, wandb_key, deploy_key, gpu_type, dry_run)
                 pod_id = pod.get("id", "unknown")
                 pods[task] = {
                     "id": pod_id,
@@ -283,10 +298,16 @@ def main():
         print("ERROR: No WandB API key found.")
         sys.exit(1)
 
+    deploy_key = get_deploy_key()
+    if not deploy_key:
+        print("ERROR: No deploy key at /tmp/runpod_deploy_key.")
+        sys.exit(1)
+
     log("=== RunPod 5-GPU Parallel Training ===")
     log(f"Tasks: {', '.join(tasks)}")
     log(f"GPU preference order: {', '.join(GPU_PREFERENCES)}")
     log(f"WandB key: {wandb_key[:8]}...")
+    log(f"Deploy key: {deploy_key[:30]}...")
     log(f"Branch: {REPO_BRANCH}")
     log("")
 
@@ -297,7 +318,7 @@ def main():
         return
 
     log("=== Step 1: Provisioning pods ===")
-    pods = provision_all(tasks, wandb_key, dry_run=args.dry_run)
+    pods = provision_all(tasks, wandb_key, deploy_key, dry_run=args.dry_run)
 
     created = sum(1 for p in pods.values() if p.get("id"))
     log(f"\n{created}/{len(tasks)} pods created")
