@@ -30,10 +30,14 @@ except ImportError:
 
 TASKS = ["gru_retrain", "iter5", "iter6", "distilbert_hier", "distilbert_concat"]
 GPU_PREFERENCES = [
+    "NVIDIA L40S",
+    "NVIDIA A100 80GB PCIe",
+    "NVIDIA A100-SXM4-80GB",
+    "NVIDIA L40",
+    "NVIDIA RTX 4090",
+    "NVIDIA RTX A6000",
     "NVIDIA H100 80GB HBM3",
     "NVIDIA H100 PCIe",
-    "NVIDIA H100 NVL",
-    "NVIDIA A100 80GB PCIe",
 ]
 IMAGE = "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04"
 VOLUME_SIZE = 50
@@ -73,17 +77,18 @@ def get_wandb_key():
 
 
 def get_deploy_key():
+    import base64
     key_path = "/tmp/runpod_deploy_key"
     if os.path.exists(key_path):
-        with open(key_path) as f:
-            return f.read().strip()
+        with open(key_path, "rb") as f:
+            return base64.b64encode(f.read()).decode()
     return None
 
 
-def build_startup_command(task, wandb_key, deploy_key):
+def build_startup_command(task, wandb_key, deploy_key_b64):
     ssh_setup = (
         f"mkdir -p /root/.ssh && "
-        f"echo '{deploy_key}' > /root/.ssh/id_ed25519 && "
+        f"echo '{deploy_key_b64}' | base64 -d > /root/.ssh/id_ed25519 && "
         f"chmod 600 /root/.ssh/id_ed25519 && "
         f"ssh-keyscan github.com >> /root/.ssh/known_hosts 2>/dev/null && "
     )
@@ -147,11 +152,14 @@ def provision_all(tasks, wandb_key, deploy_key, dry_run=False):
     return pods
 
 
+ARTIFACT_PREFIX = "v3_"
+
+
 def check_artifact_exists(task):
     try:
         import wandb
         api = wandb.Api()
-        api.artifact(f"{PROJECT}/{task}_results:latest")
+        api.artifact(f"{PROJECT}/{ARTIFACT_PREFIX}{task}_results:latest")
         return True
     except Exception:
         return False
@@ -246,7 +254,7 @@ def download_results(pods):
             continue
         try:
             api = wandb.Api()
-            art = api.artifact(f"{PROJECT}/{task}_results:latest")
+            art = api.artifact(f"{PROJECT}/{ARTIFACT_PREFIX}{task}_results:latest")
             log(f"  Downloading {task} results (v{art.version}, {art.size / 1e6:.1f} MB)...")
             art.download(".")
             downloaded.append(task)

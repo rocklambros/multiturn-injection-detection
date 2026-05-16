@@ -38,8 +38,8 @@ upload_partial_results() {
     python3 -c "
 import wandb, os, glob
 try:
-    run = wandb.init(project='multiturn-injection-detection-v2', job_type='partial-upload', name='${TASK}_partial')
-    art = wandb.Artifact('${TASK}_partial', type='model')
+    run = wandb.init(project='multiturn-injection-detection-v2', job_type='partial-upload', name='v3_${TASK}_partial')
+    art = wandb.Artifact('v3_${TASK}_partial', type='model')
     for p in glob.glob('models/v2_${TASK}*') + glob.glob('results/v2_${TASK}*/**', recursive=True):
         if os.path.isfile(p):
             art.add_file(p)
@@ -160,9 +160,9 @@ log "Uploading results to WandB..."
 python3 -c "
 import wandb, os, glob
 
-run = wandb.init(project='multiturn-injection-detection-v2', job_type='results-upload', name='${TASK}_results')
+run = wandb.init(project='multiturn-injection-detection-v2', job_type='results-upload', name='v3_${TASK}_results')
 
-art = wandb.Artifact('${TASK}_results', type='model', description='Training results for $TASK')
+art = wandb.Artifact('v3_${TASK}_results', type='model', description='v3 clean retrain results for $TASK')
 
 for pattern in ['models/v2_${TASK}*', 'results/v2_${TASK}*/**']:
     for p in glob.glob(pattern, recursive=True):
@@ -183,4 +183,4 @@ print('Results uploaded successfully')
 log "=== Task $TASK completed successfully ==="
 log "Duration: ${TRAIN_DURATION}s"
 log "GPU: $GPU_NAME ($GPU_MEM)"
-log "Results uploaded to WandB artifact: ${TASK}_results"
+log "Results uploaded to WandB artifact: v3_${TASK}_results"
