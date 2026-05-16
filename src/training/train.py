@@ -64,7 +64,7 @@ def save_model_summary(model, path):
     print(f"[INFO] Model summary saved to {path}")
 
 
-def train_one_epoch(model, train_loader, optimizer, criterion, device):
+def train_one_epoch(model, train_loader, optimizer, criterion, device, scheduler=None):
     """Run one training epoch.
 
     Args:
@@ -73,14 +73,16 @@ def train_one_epoch(model, train_loader, optimizer, criterion, device):
         optimizer: PyTorch optimizer.
         criterion: Loss function.
         device: torch.device for computation.
+        scheduler: Optional per-step LR scheduler (e.g. warmup).
 
     Returns:
-        tuple: (average_loss, average_accuracy) for the epoch.
+        tuple: (average_loss, average_accuracy, nan_detected).
     """
     model.train()
     running_loss = 0.0
     running_correct = 0
     total_samples = 0
+    nan_detected = False
 
     for batch_idx, batch in enumerate(tqdm(train_loader, desc="  Training", leave=False)):
         turn_mask = None
@@ -114,7 +116,6 @@ def train_one_epoch(model, train_loader, optimizer, criterion, device):
         else:
             outputs = model(inputs)
 
-        # Handle models that output (batch,) instead of (batch, 1)
         if outputs.dim() == 1:
             outputs = outputs.unsqueeze(1)
         if labels.dim() == 1:
@@ -124,9 +125,15 @@ def train_one_epoch(model, train_loader, optimizer, criterion, device):
             print(f"    [Shape] Model output: {outputs.shape}, labels after reshape: {labels.shape}")
 
         loss = criterion(outputs, labels)
+
+        if torch.isnan(loss) or torch.isinf(loss):
+            print(f"    [NaN] Loss is NaN/Inf at batch {batch_idx}, skipping batch")
+            nan_detected = True
+            optimizer.zero_grad()
+            continue
+
         loss.backward()
 
-        # Gradient clipping
         trainable_params = [p for p in model.parameters() if p.requires_grad]
         grad_norm = torch.nn.utils.clip_grad_norm_(trainable_params, max_norm=1.0)
 
@@ -134,14 +141,18 @@ def train_one_epoch(model, train_loader, optimizer, criterion, device):
             wandb.log({"batch_grad_norm": grad_norm.item()})
 
         optimizer.step()
+        if scheduler is not None:
+            scheduler.step()
 
         running_loss += loss.item() * inputs.size(0)
         running_correct += ((outputs >= 0.0).float() == labels).sum().item()
         total_samples += inputs.size(0)
 
+    if total_samples == 0:
+        return float('nan'), 0.0, True
     avg_loss = running_loss / total_samples
     avg_acc = running_correct / total_samples
-    return avg_loss, avg_acc
+    return avg_loss, avg_acc, nan_detected
 
 
 def validate(model, val_loader, criterion, device):
@@ -208,30 +219,26 @@ def validate(model, val_loader, criterion, device):
 
 
 def train_model(model, train_loader, val_loader, epochs, iteration_name,
-                optimizer, criterion, device, patience=3, wandb_config=None):
-    """Train a PyTorch model with early stopping, LR scheduling, and checkpointing.
+                optimizer, criterion, device, patience=3, wandb_config=None,
+                warmup_steps=0, max_nan_rollbacks=3):
+    """Train a PyTorch model with early stopping, NaN rollback, and optional warmup.
 
     Args:
         model: PyTorch nn.Module.
         train_loader: DataLoader for training data.
         val_loader: DataLoader for validation data.
         epochs: Maximum training epochs.
-        iteration_name: String identifier for saving results (e.g., 'iter1_lstm').
-        optimizer: PyTorch optimizer (typically Adam).
-        criterion: Loss function (typically BCEWithLogitsLoss).
-        device: torch.device ('cuda' or 'cpu').
+        iteration_name: String identifier for saving results.
+        optimizer: PyTorch optimizer.
+        criterion: Loss function.
+        device: torch.device.
         patience: Early stopping patience (default 3).
-        wandb_config: Optional dict to enable WandB logging. Keys: 'project',
-            'group', 'tags'. If None, WandB logging is skipped.
+        wandb_config: Optional dict for WandB logging.
+        warmup_steps: Linear warmup steps (0 = no warmup).
+        max_nan_rollbacks: Max NaN rollbacks before aborting.
 
     Returns:
-        dict: Training history with keys 'train_loss', 'val_loss', 'train_acc', 'val_acc'
-              (lists of floats, one entry per epoch).
-
-    Side effects:
-        - Saves training_history.json to results/{iteration_name}/
-        - Saves model_summary.txt to results/{iteration_name}/
-        - Saves best model weights to models/{iteration_name}.pt
+        dict: Training history with keys 'train_loss', 'val_loss', 'train_acc', 'val_acc'.
     """
     # Setup directories
     results_dir = os.path.join("results", iteration_name)
@@ -251,10 +258,16 @@ def train_model(model, train_loader, val_loader, epochs, iteration_name,
     # Save model summary
     save_model_summary(model, summary_path)
 
-    # LR scheduler
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+    # LR schedulers
+    reduce_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, factor=0.5, patience=2, min_lr=1e-6
     )
+
+    warmup_scheduler = None
+    if warmup_steps > 0:
+        warmup_scheduler = torch.optim.lr_scheduler.LinearLR(
+            optimizer, start_factor=0.1, end_factor=1.0, total_iters=warmup_steps,
+        )
 
     # WandB initialization
     if HAS_WANDB and wandb_config is not None:
@@ -276,7 +289,9 @@ def train_model(model, train_loader, val_loader, epochs, iteration_name,
     # Early stopping state
     best_val_loss = float("inf")
     best_model_weights = copy.deepcopy(model.state_dict())
+    best_optimizer_state = copy.deepcopy(optimizer.state_dict())
     epochs_without_improvement = 0
+    nan_rollback_count = 0
 
     history = {
         "train_loss": [],
@@ -291,16 +306,29 @@ def train_model(model, train_loader, val_loader, epochs, iteration_name,
         print(f"Epoch {epoch}/{epochs} | LR: {optimizer.param_groups[0]['lr']:.2e}")
         print(f"{'='*60}")
 
-        # Train
-        train_loss, train_acc = train_one_epoch(model, train_loader, optimizer, criterion, device)
+        train_loss, train_acc, nan_detected = train_one_epoch(
+            model, train_loader, optimizer, criterion, device,
+            scheduler=warmup_scheduler,
+        )
 
-        # Validate
+        if nan_detected or (isinstance(train_loss, float) and (train_loss != train_loss)):
+            nan_rollback_count += 1
+            print(f"  [NaN ROLLBACK {nan_rollback_count}/{max_nan_rollbacks}] Restoring last good state")
+            if nan_rollback_count >= max_nan_rollbacks:
+                print(f"  [ABORT] Too many NaN rollbacks, stopping training")
+                model.load_state_dict(best_model_weights)
+                break
+            model.load_state_dict(best_model_weights)
+            optimizer.load_state_dict(best_optimizer_state)
+            for pg in optimizer.param_groups:
+                pg["lr"] *= 0.5
+            print(f"  [NaN ROLLBACK] LR halved to {optimizer.param_groups[0]['lr']:.2e}")
+            continue
+
         val_loss, val_acc = validate(model, val_loader, criterion, device)
 
-        # Step scheduler
-        scheduler.step(val_loss)
+        reduce_scheduler.step(val_loss)
 
-        # Record history
         history["train_loss"].append(train_loss)
         history["val_loss"].append(val_loss)
         history["train_acc"].append(train_acc)
@@ -321,10 +349,10 @@ def train_model(model, train_loader, val_loader, epochs, iteration_name,
         print(f"  Val   Loss: {val_loss:.4f} | Val   Acc: {val_acc:.4f}")
         print(f"  Time: {elapsed:.1f}s")
 
-        # Early stopping check
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             best_model_weights = copy.deepcopy(model.state_dict())
+            best_optimizer_state = copy.deepcopy(optimizer.state_dict())
             epochs_without_improvement = 0
             torch.save(model.state_dict(), model_save_path)
             print(f"  [CHECKPOINT] Best model saved to {model_save_path}")

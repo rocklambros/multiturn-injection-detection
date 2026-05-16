@@ -192,9 +192,95 @@ def run_method_baseline(data):
     return {"accuracy": acc, "f1": f1}
 
 
+def run_bigram_bow_baseline(data):
+    """BOW classifier with bigrams on concatenated turn text."""
+    print("\n=== Baseline 6: Bigram Bag-of-Words ===")
+
+    def to_text(seq):
+        return " ".join(extract_turns_text(seq))
+
+    train_texts = [to_text(s) for s in data["train"]]
+    train_labels = [s["label"] for s in data["train"]]
+    test_texts = [to_text(s) for s in data["test"]]
+    test_labels = [s["label"] for s in data["test"]]
+
+    vec = CountVectorizer(max_features=10000, ngram_range=(1, 2), stop_words="english")
+    X_train = vec.fit_transform(train_texts)
+    X_test = vec.transform(test_texts)
+
+    clf = LogisticRegression(max_iter=1000, random_state=42)
+    clf.fit(X_train, train_labels)
+
+    preds = clf.predict(X_test)
+    probs = clf.predict_proba(X_test)[:, 1]
+
+    acc = accuracy_score(test_labels, preds)
+    f1 = f1_score(test_labels, preds)
+    auc = roc_auc_score(test_labels, probs)
+    print(f"  Accuracy: {acc:.4f}")
+    print(f"  F1:       {f1:.4f}")
+    print(f"  AUC:      {auc:.4f}")
+
+    return {"accuracy": acc, "f1": f1, "auc": auc}
+
+
+def run_per_turn_voting_baseline(data):
+    """Per-turn BoW voting: classify each turn independently, take max."""
+    print("\n=== Baseline 7: Per-Turn Voting (Max) ===")
+
+    train_all_turns = []
+    train_all_labels = []
+    for s in data["train"]:
+        turns = extract_turns_text(s)
+        for t in turns:
+            train_all_turns.append(t)
+            train_all_labels.append(s["label"])
+
+    vec = CountVectorizer(max_features=5000, stop_words="english")
+    X_train = vec.fit_transform(train_all_turns)
+
+    clf = LogisticRegression(max_iter=1000, random_state=42)
+    clf.fit(X_train, train_all_labels)
+
+    test_labels = [s["label"] for s in data["test"]]
+    test_max_probs = []
+    test_mean_probs = []
+    for s in data["test"]:
+        turns = extract_turns_text(s)
+        if not turns:
+            test_max_probs.append(0.0)
+            test_mean_probs.append(0.0)
+            continue
+        X_turns = vec.transform(turns)
+        probs = clf.predict_proba(X_turns)[:, 1]
+        test_max_probs.append(float(np.max(probs)))
+        test_mean_probs.append(float(np.mean(probs)))
+
+    max_preds = [1 if p >= 0.5 else 0 for p in test_max_probs]
+    acc = accuracy_score(test_labels, max_preds)
+    f1 = f1_score(test_labels, max_preds)
+    auc = roc_auc_score(test_labels, test_max_probs)
+    print(f"  Max-vote Accuracy: {acc:.4f}")
+    print(f"  Max-vote F1:       {f1:.4f}")
+    print(f"  Max-vote AUC:      {auc:.4f}")
+
+    mean_preds = [1 if p >= 0.5 else 0 for p in test_mean_probs]
+    mean_acc = accuracy_score(test_labels, mean_preds)
+    mean_f1 = f1_score(test_labels, mean_preds)
+    mean_auc = roc_auc_score(test_labels, test_mean_probs)
+    print(f"  Mean-vote Accuracy: {mean_acc:.4f}")
+    print(f"  Mean-vote F1:       {mean_f1:.4f}")
+    print(f"  Mean-vote AUC:      {mean_auc:.4f}")
+
+    return {
+        "max_vote": {"accuracy": acc, "f1": f1, "auc": auc},
+        "mean_vote": {"accuracy": mean_acc, "f1": mean_f1, "auc": mean_auc},
+    }
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data-dir", default="data/synthetic_v2")
+    parser.add_argument("--data-dir", default="data/synthetic_v3")
     parser.add_argument("--output", default="results/trivial_baselines.json")
     args = parser.parse_args()
 
@@ -203,10 +289,12 @@ def main():
 
     results = {}
     results["bow"] = run_bow_baseline(data)
+    results["bigram_bow"] = run_bigram_bow_baseline(data)
     results["length_only"] = run_length_baseline(data)
     results["first_turn"] = run_single_turn_baseline(data, "first")
     results["last_turn"] = run_single_turn_baseline(data, "last")
     results["generation_method"] = run_method_baseline(data)
+    results["per_turn_voting"] = run_per_turn_voting_baseline(data)
 
     print("\n" + "=" * 60)
     print("TRIVIAL BASELINE SUMMARY")

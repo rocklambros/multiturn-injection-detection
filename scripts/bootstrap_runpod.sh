@@ -6,7 +6,7 @@ WANDB_KEY_FILE="/root/.wandb_key"
 REPO_URL="git@github.com:rocklambros/multiturn-injection-detection.git"
 REPO_BRANCH="${REPO_BRANCH:-feature/v3-clean-retrain}"
 REPO_DIR="/workspace/multiturn-injection-detection"
-ARTIFACT="rockcyber/multiturn-injection-detection-v2/synthetic_v2_data:latest"
+ARTIFACT="rockcyber/multiturn-injection-detection-v2/synthetic_v3_data:latest"
 HEARTBEAT_INTERVAL=60
 
 usage() {
@@ -14,6 +14,9 @@ usage() {
 Usage: bash bootstrap_runpod.sh <task>
 
 Tasks: gru_retrain | iter5 | iter6 | distilbert_hier | distilbert_concat
+       ablation_shuffled | ablation_reversed | ablation_prefix
+       ablation_continuation | ablation_autoencoder
+       ablation_mean_pool | ablation_max_pool
 
 Prerequisites:
   - WandB API key in /root/.wandb_key
@@ -40,7 +43,7 @@ import wandb, os, glob
 try:
     run = wandb.init(project='multiturn-injection-detection-v2', job_type='partial-upload', name='v3_${TASK}_partial')
     art = wandb.Artifact('v3_${TASK}_partial', type='model')
-    for p in glob.glob('models/v2_${TASK}*') + glob.glob('results/v2_${TASK}*/**', recursive=True):
+    for p in glob.glob('models/v3_${TASK}*') + glob.glob('results/v3_${TASK}*/**', recursive=True):
         if os.path.isfile(p):
             art.add_file(p)
     if art.manifest.entries:
@@ -102,15 +105,16 @@ print(f'Artifact downloaded to {base}')
 "
 
 # Verify critical files exist
-for f in data/synthetic_v2/multiturn_train.json data/processed/single_turn_train.csv models/vocab.json results/encoder_decision.json; do
+for f in data/synthetic_v3/multiturn_train.json data/processed/single_turn_train.csv models/vocab.json results/encoder_decision.json; do
     [ -f "$f" ] || die "Missing artifact file: $f"
 done
 log "All artifact files verified"
 
-# iter5/iter6 need the retrained GRU encoder
-if [[ "$TASK" == "iter5" || "$TASK" == "iter6" ]]; then
-    [ -f "models/v2_gru_retrain.pt" ] || die "Missing models/v2_gru_retrain.pt — gru_retrain must complete first"
-    log "Frozen encoder verified: models/v2_gru_retrain.pt"
+# Tasks that need the retrained GRU encoder
+NEEDS_ENCODER="iter5 iter6 ablation_shuffled ablation_reversed ablation_prefix ablation_continuation ablation_autoencoder ablation_mean_pool ablation_max_pool"
+if echo "$NEEDS_ENCODER" | grep -qw "$TASK"; then
+    [ -f "models/v3_gru_retrain.pt" ] || die "Missing models/v3_gru_retrain.pt — gru_retrain must complete first"
+    log "Frozen encoder verified: models/v3_gru_retrain.pt"
 fi
 
 # --- Run training ---
@@ -131,28 +135,18 @@ log "Training finished in ${TRAIN_DURATION}s (exit code: $TRAIN_EXIT)"
 # --- Verify outputs ---
 log "Verifying training outputs..."
 
+TASK_PREFIX="v3_${TASK}"
 case "$TASK" in
-    gru_retrain)
-        [ -f "models/v2_gru_retrain.pt" ] || die "Model file missing"
-        [ -f "results/v2_gru_retrain/training_history.json" ] || die "History file missing"
-        ;;
-    iter5)
-        [ -f "models/v2_iter5_multiturn.pt" ] || die "Model file missing"
-        [ -f "results/v2_iter5_multiturn/training_history.json" ] || die "History file missing"
-        ;;
-    iter6)
-        [ -f "models/v2_iter6_attention.pt" ] || die "Model file missing"
-        [ -f "results/v2_iter6_attention/training_history.json" ] || die "History file missing"
-        ;;
-    distilbert_hier)
-        [ -f "models/v2_distilbert_hier.pt" ] || die "Model file missing"
-        [ -f "results/v2_distilbert_hier/training_history.json" ] || die "History file missing"
-        ;;
-    distilbert_concat)
-        [ -f "models/v2_distilbert_concat.pt" ] || die "Model file missing"
-        [ -f "results/v2_distilbert_concat/training_history.json" ] || die "History file missing"
-        ;;
+    gru_retrain)     TASK_PREFIX="v3_gru_retrain" ;;
+    iter5)           TASK_PREFIX="v3_iter5_multiturn" ;;
+    iter6)           TASK_PREFIX="v3_iter6_attention" ;;
+    distilbert_hier) TASK_PREFIX="v3_distilbert_hier" ;;
+    distilbert_concat) TASK_PREFIX="v3_distilbert_concat" ;;
+    ablation_*)      TASK_PREFIX="v3_${TASK}" ;;
 esac
+
+[ -f "models/${TASK_PREFIX}.pt" ] || die "Model file missing: models/${TASK_PREFIX}.pt"
+[ -f "results/${TASK_PREFIX}/training_history.json" ] || die "History file missing: results/${TASK_PREFIX}/training_history.json"
 log "Output verification passed"
 
 # --- Upload results ---
@@ -162,18 +156,21 @@ import wandb, os, glob
 
 run = wandb.init(project='multiturn-injection-detection-v2', job_type='results-upload', name='v3_${TASK}_results')
 
-art = wandb.Artifact('v3_${TASK}_results', type='model', description='v3 clean retrain results for $TASK')
+art = wandb.Artifact('v3_${TASK}_results', type='model', description='v3 results for $TASK')
 
-for pattern in ['models/v2_${TASK}*', 'results/v2_${TASK}*/**']:
+for pattern in ['models/v3_${TASK}*', 'models/${TASK_PREFIX}*', 'results/v3_${TASK}*/**', 'results/${TASK_PREFIX}*/**']:
     for p in glob.glob(pattern, recursive=True):
         if os.path.isfile(p):
             art.add_file(p)
             print(f'  Added: {p}')
 
-# Also upload encoder_decision if gru_retrain updated it
 if '${TASK}' == 'gru_retrain' and os.path.exists('results/encoder_decision.json'):
     art.add_file('results/encoder_decision.json')
     print('  Added: results/encoder_decision.json')
+
+if '${TASK}' == 'ablation_autoencoder' and os.path.exists('models/v3_turn_autoencoder.pt'):
+    art.add_file('models/v3_turn_autoencoder.pt')
+    print('  Added: models/v3_turn_autoencoder.pt')
 
 run.log_artifact(art)
 run.finish()

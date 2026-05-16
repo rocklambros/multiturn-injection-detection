@@ -28,7 +28,13 @@ except ImportError:
     print("ERROR: runpod SDK not installed. Run: pip install runpod")
     sys.exit(1)
 
-TASKS = ["gru_retrain", "iter5", "iter6", "distilbert_hier", "distilbert_concat"]
+TASKS_CORE = ["gru_retrain", "iter5", "iter6", "distilbert_hier", "distilbert_concat"]
+TASKS_ABLATIONS = [
+    "ablation_shuffled", "ablation_reversed", "ablation_prefix",
+    "ablation_continuation", "ablation_autoencoder",
+    "ablation_mean_pool", "ablation_max_pool",
+]
+TASKS = TASKS_CORE + TASKS_ABLATIONS
 GPU_PREFERENCES = [
     "NVIDIA L40S",
     "NVIDIA A100 80GB PCIe",
@@ -318,7 +324,7 @@ def main():
         print("ERROR: No deploy key at /tmp/runpod_deploy_key.")
         sys.exit(1)
 
-    log("=== RunPod 5-GPU Parallel Training ===")
+    log(f"=== RunPod {len(tasks)}-GPU Parallel Training ===")
     log(f"Tasks: {', '.join(tasks)}")
     log(f"GPU preference order: {', '.join(GPU_PREFERENCES)}")
     log(f"WandB key: {wandb_key[:8]}...")

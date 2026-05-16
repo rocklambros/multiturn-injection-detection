@@ -35,10 +35,12 @@ class HierarchicalDistilBERT(nn.Module):
 
         bert_dim = self.bert.config.hidden_size  # 768
 
+        self.turn_position_embedding = nn.Embedding(max_turns, bert_dim)
+
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=bert_dim,
             nhead=num_attention_heads,
-            dim_feedforward=256,
+            dim_feedforward=768,
             dropout=dropout_rate,
             batch_first=True,
         )
@@ -74,6 +76,9 @@ class HierarchicalDistilBERT(nn.Module):
             cls_tokens.append(outputs.last_hidden_state[:, 0, :])
 
         cls_sequence = torch.stack(cls_tokens, dim=1)  # (batch, max_turns, 768)
+
+        positions = torch.arange(max_turns, device=input_ids.device).unsqueeze(0).expand(batch_size, -1)
+        cls_sequence = cls_sequence + self.turn_position_embedding(positions)
 
         cls_sequence = cls_sequence * turn_mask.unsqueeze(-1)
 
