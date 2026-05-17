@@ -37,12 +37,15 @@ class HierarchicalDistilBERT(nn.Module):
 
         self.turn_position_embedding = nn.Embedding(max_turns, bert_dim)
 
+        self.input_norm = nn.LayerNorm(bert_dim)
+
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=bert_dim,
             nhead=num_attention_heads,
             dim_feedforward=768,
             dropout=dropout_rate,
             batch_first=True,
+            norm_first=True,
         )
         self.cross_turn_transformer = nn.TransformerEncoder(
             encoder_layer, num_layers=cross_turn_layers,
@@ -81,6 +84,7 @@ class HierarchicalDistilBERT(nn.Module):
         cls_sequence = cls_sequence + self.turn_position_embedding(positions)
 
         cls_sequence = cls_sequence * turn_mask.unsqueeze(-1)
+        cls_sequence = self.input_norm(cls_sequence)
 
         # TransformerEncoder expects src_key_padding_mask: True = ignore
         padding_mask = (turn_mask == 0)
