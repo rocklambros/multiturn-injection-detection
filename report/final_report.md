@@ -190,10 +190,10 @@ All results below are on the v3 test set (5,130 sequences, 4 difficulty tiers, b
 
 | Tier | iter5 F1 | iter6 F1 | DistilBERT-concat F1 | n |
 |------|:---:|:---:|:---:|---:|
-| Easy | 0.866 | 0.874 | 0.996 | 1,462 |
-| Medium | 0.837 | 0.840 | 0.996 | 1,414 |
-| Hard | 0.831 | 0.830 | 0.989 | 1,394 |
-| Adversarial | 0.794 | 0.786 | 0.984 | 860 |
+| Easy | 0.872 | 0.876 | 0.994 | 1,462 |
+| Medium | 0.828 | 0.832 | 0.991 | 1,414 |
+| Hard | 0.828 | 0.830 | 0.994 | 1,394 |
+| Adversarial | 0.802 | 0.786 | 0.985 | 860 |
 
 ### 4.4 Statistical Significance
 

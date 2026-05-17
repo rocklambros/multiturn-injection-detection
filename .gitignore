@@ -4,6 +4,7 @@ data/embeddings/
 data/processed/*.csv
 data/synthetic/*.json
 data/synthetic_v2/
+data/synthetic_v3/
 
 # Model weights (top-level only, not src/models/)
 /models/

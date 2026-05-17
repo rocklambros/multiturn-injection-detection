@@ -196,6 +196,8 @@ Paired one-sided bootstrap tests (1000 resamples):
 
 The first four comparisons establish the core claim: temporal LSTM modeling significantly outperforms all turn-level aggregation methods. The shuffled-turns comparison uses the same model, same parameters, same data — only the turn order differs. The continuation-vs-prefix comparison confirms that post-branch turns carry the discriminative signal (+0.179 F1), consistent with the shared-prefix design. Both DistilBERT variants significantly outperform the temporal LSTM, establishing the accuracy-efficiency tradeoff.
 
+Under Bonferroni correction for 8 comparisons (adjusted alpha = 0.00625), all significant results remain significant since every reported p-value is below 0.001. The Holm-Bonferroni sequential procedure yields the same conclusion.
+
 ### 6.3 Turn-Order Sensitivity
 
 We take every correctly classified attack sequence, randomly shuffle its turns, and re-run inference through the temporal LSTM:
@@ -210,12 +212,12 @@ This is the strongest evidence that the LSTM learns genuine temporal patterns. A
 
 | Tier | Temporal LSTM F1 | +Attention F1 | DistilBERT-concat F1 | n |
 |------|:---:|:---:|:---:|---:|
-| Easy | 0.866 | 0.874 | 0.996 | 1,462 |
-| Medium | 0.837 | 0.840 | 0.996 | 1,414 |
-| Hard | 0.831 | 0.830 | 0.989 | 1,394 |
-| Adversarial | 0.794 | 0.786 | 0.984 | 860 |
+| Easy | 0.872 | 0.876 | 0.994 | 1,462 |
+| Medium | 0.828 | 0.832 | 0.991 | 1,414 |
+| Hard | 0.828 | 0.830 | 0.994 | 1,394 |
+| Adversarial | 0.802 | 0.786 | 0.985 | 860 |
 
-The temporal LSTM shows a 7-point F1 degradation from easy to adversarial, confirming the difficulty tiers function as designed. DistilBERT's degradation is smaller (1.2 points) but follows the same pattern, suggesting the tier rankings reflect genuine properties of the attacks.
+The temporal LSTM shows a 7-point F1 degradation from easy to adversarial, confirming the difficulty tiers function as designed. DistilBERT's degradation is smaller (0.9 points) but follows the same pattern, suggesting the tier rankings reflect genuine properties of the attacks.
 
 ### 6.5 Per-Strategy Analysis
 
@@ -241,6 +243,10 @@ Fragment distribution is easiest to detect because it produces the most distinct
 **Continuation-only**: Providing only post-branch turns (F1 = 0.846) matches or slightly exceeds the full model (0.837). The shared prefix contributes noise, not signal.
 
 **Autoencoder encoder**: Replacing the injection-trained GRU with a reconstruction-trained autoencoder (F1 = 0.845) produces equivalent performance. The sequence LSTM drives temporal detection regardless of whether the turn encoder was trained for injection classification.
+
+### 6.7 Threshold Tuning
+
+Sweeping the classification threshold on the validation set from the default 0.5 to 0.64 improves the single-turn GRU encoder to F1 = 0.995 (precision = 0.996, recall = 0.994) with ROC-AUC = 0.9997 and PR-AUC = 0.9997. The confusion matrix at the optimal threshold shows only 2 false positives and 3 false negatives on a 1,000-sample test set. This result demonstrates that the learned representations contain more discriminative information than the default threshold reveals, and that threshold calibration should be standard practice before reporting final single-turn performance.
 
 ## 7. Analysis
 
@@ -278,7 +284,7 @@ Third, the turn-order sensitivity analysis (55% flip rate) demonstrates that the
 
 Per-strategy analysis reveals that instruction layering (F1 = 0.605) and context priming (F1 = 0.628) are the hardest strategies to detect. Both produce gradual, smooth changes in the turn-encoding sequence rather than the sharp transitions characteristic of fragment distribution. The temporal LSTM's 64-dimensional hidden state may lack the capacity to model these subtle shifts.
 
-Per-tier analysis shows adversarial sequences (F1 = 0.794) are genuinely harder, though the model degrades gracefully rather than catastrophically. The 7-point gap from easy to adversarial suggests room for improvement, particularly through larger hidden states or multi-layer sequence models.
+Per-tier analysis shows adversarial sequences (F1 = 0.802) are genuinely harder, though the model degrades gracefully rather than catastrophically. The 7-point gap from easy to adversarial suggests room for improvement, particularly through larger hidden states or multi-layer sequence models.
 
 Examining the error patterns more closely, false negatives cluster in conversations where the attack goal closely matches the natural topic of the shared prefix. For example, a conversation about home security that transitions into requesting lockpicking instructions looks similar to a benign conversation about physical security measures. The GRU encoder's 32-dimensional compression loses the semantic distinction between "discussing security measures" and "requesting attack instructions" because both share security-related vocabulary. This compression-induced ambiguity represents the fundamental tradeoff of the dual-encoder design: the same compression that prevents vocabulary confounds also prevents fine-grained semantic discrimination.
 
