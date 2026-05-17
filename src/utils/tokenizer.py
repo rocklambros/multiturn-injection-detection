@@ -73,19 +73,17 @@ def build_vocab(train_texts, max_vocab_size=20000):
     return vocab
 
 
-def encode_texts(vocab, texts, max_len=256):
+def encode_texts(vocab, texts, max_len=256, verbose=True):
     """Encode texts to padded integer sequences.
 
     Args:
         vocab: Word-to-index dict from build_vocab.
         texts: List of text strings.
         max_len: Maximum sequence length (post-truncation/padding).
+        verbose: Print output shape (default True).
 
     Returns:
         torch.LongTensor of shape (len(texts), max_len).
-
-    Side effects:
-        Prints output shape.
     """
     oov_idx = vocab.get("<OOV>", 1)
     encoded = []
@@ -105,11 +103,12 @@ def encode_texts(vocab, texts, max_len=256):
         encoded.append(ids)
 
     result = torch.LongTensor(encoded)
-    print(f"Encoded shape: {result.shape}")
+    if verbose:
+        print(f"Encoded shape: {result.shape}")
     return result
 
 
-def encode_multiturn(vocab, turns_list, max_turns=10, max_len=256):
+def encode_multiturn(vocab, turns_list, max_turns=10, max_len=256, verbose=True):
     """Encode multi-turn conversations to 3D padded tensor.
 
     Args:
@@ -117,14 +116,12 @@ def encode_multiturn(vocab, turns_list, max_turns=10, max_len=256):
         turns_list: List of conversations, each a list of turn strings.
         max_turns: Maximum number of turns per conversation.
         max_len: Maximum tokens per turn.
+        verbose: Print output shapes (default True).
 
     Returns:
         Tuple of (token_ids, mask) where:
             token_ids: torch.LongTensor of shape (len(turns_list), max_turns, max_len)
             mask: torch.FloatTensor of shape (len(turns_list), max_turns), 1=real, 0=pad
-
-    Side effects:
-        Prints output shapes.
     """
     oov_idx = vocab.get("<OOV>", 1)
     all_ids = []
@@ -155,8 +152,9 @@ def encode_multiturn(vocab, turns_list, max_turns=10, max_len=256):
 
     token_ids = torch.LongTensor(all_ids)
     masks = torch.FloatTensor(all_masks)
-    print(f"Multi-turn token_ids shape: {token_ids.shape}")
-    print(f"Multi-turn mask shape: {masks.shape}")
+    if verbose:
+        print(f"Multi-turn token_ids shape: {token_ids.shape}")
+        print(f"Multi-turn mask shape: {masks.shape}")
     return token_ids, masks
 
 
