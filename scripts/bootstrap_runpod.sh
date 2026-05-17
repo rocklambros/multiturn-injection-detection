@@ -106,12 +106,32 @@ pip install -q -r requirements.txt 2>&1 | tail -3
 # --- Download artifacts ---
 log "Downloading WandB artifacts..."
 python3 -c "
-import wandb
+import wandb, os, shutil
 run = wandb.init(project='multiturn-injection-detection-v2', job_type='download', name='${TASK}_download')
 artifact = run.use_artifact('$ARTIFACT')
-base = artifact.download('.')
+base = artifact.download('/tmp/wandb_artifact')
 run.finish()
 print(f'Artifact downloaded to {base}')
+
+# Move files to correct repo-relative paths
+mapping = {
+    'synthetic_v3': 'data/synthetic_v3',
+    'processed': 'data/processed',
+    'embeddings': 'data/embeddings',
+    'models': 'models',
+    'results': 'results',
+}
+for art_dir, repo_dir in mapping.items():
+    src = os.path.join(base, art_dir)
+    if os.path.exists(src):
+        os.makedirs(repo_dir, exist_ok=True)
+        for fname in os.listdir(src):
+            src_file = os.path.join(src, fname)
+            dst_file = os.path.join(repo_dir, fname)
+            if os.path.isfile(src_file):
+                shutil.copy2(src_file, dst_file)
+                print(f'  {art_dir}/{fname} -> {dst_file}')
+print('Artifact files placed in repo structure')
 "
 
 # Verify critical files exist
@@ -123,6 +143,28 @@ log "All artifact files verified"
 # Tasks that need the retrained GRU encoder
 NEEDS_ENCODER="iter5 iter6 ablation_shuffled ablation_reversed ablation_prefix ablation_continuation ablation_autoencoder ablation_mean_pool ablation_max_pool"
 if echo "$NEEDS_ENCODER" | grep -qw "$TASK"; then
+    if [ ! -f "models/v3_gru_retrain.pt" ]; then
+        log "Downloading GRU encoder from v3_gru_retrain_results artifact..."
+        python3 -c "
+import wandb, shutil, os
+run = wandb.init(project='multiturn-injection-detection-v2', job_type='download', name='${TASK}_encoder_download')
+artifact = run.use_artifact('rockcyber/multiturn-injection-detection-v2/v3_gru_retrain_results:latest')
+base = artifact.download('/tmp/gru_artifact')
+run.finish()
+for root, dirs, files in os.walk(base):
+    for f in files:
+        src = os.path.join(root, f)
+        # Flatten into models/ or results/
+        if f.endswith('.pt'):
+            os.makedirs('models', exist_ok=True)
+            shutil.copy2(src, os.path.join('models', f))
+            print(f'  {f} -> models/{f}')
+        elif f.endswith('.json'):
+            os.makedirs('results', exist_ok=True)
+            shutil.copy2(src, os.path.join('results', f))
+            print(f'  {f} -> results/{f}')
+" || die "Failed to download GRU encoder artifact"
+    fi
     [ -f "models/v3_gru_retrain.pt" ] || die "Missing models/v3_gru_retrain.pt — gru_retrain must complete first"
     log "Frozen encoder verified: models/v3_gru_retrain.pt"
 fi
