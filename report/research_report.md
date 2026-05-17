@@ -4,15 +4,15 @@
 
 ## Abstract
 
-Prompt injection attacks against large language model (LLM) systems increasingly distribute malicious intent across multiple conversation turns, where each individual turn appears benign in isolation. Existing detection systems operate on single messages and cannot model the temporal dependencies that distributed attacks exploit. We present a dual-encoder architecture that combines a frozen single-turn GRU encoder with a trainable sequence LSTM to detect multi-turn injection patterns. The turn encoder compresses each message into a 32-dimensional representation; the sequence LSTM processes these representations temporally, learning to recognize escalation patterns, fragmented payloads, and cumulative constraint overrides. On a shared-prefix evaluation dataset of 27,180 synthetic conversations across four difficulty tiers, the temporal LSTM (27K trainable parameters) achieves F1 = 0.837 [0.826, 0.847], significantly outperforming turn-level voting baselines (best F1 = 0.727, p < 0.001). Shuffling turn order causes 55% of correctly classified attacks to flip to incorrect, confirming genuine temporal learning. We also evaluate hierarchical and concatenated DistilBERT baselines (5.5M–66.4M parameters), which achieve F1 = 0.976–0.992 but require 200–2,460x more trainable parameters. The parameter efficiency of the dual-encoder design makes it deployable on edge hardware where transformer models are impractical.
+Prompt injection attacks against large language model (LLM) systems increasingly distribute malicious intent across multiple conversation turns, where each individual turn appears benign in isolation. Existing detection systems operate on single messages and cannot model the temporal dependencies that distributed attacks exploit. We present a dual-encoder architecture that combines a frozen single-turn GRU encoder with a trainable sequence LSTM to detect multi-turn injection patterns. The turn encoder compresses each message into a 32-dimensional representation; the sequence LSTM processes these representations temporally, learning to recognize escalation patterns, fragmented payloads, and cumulative constraint overrides. On a shared-prefix evaluation dataset of 27,180 synthetic conversations across four difficulty tiers, the temporal LSTM (27K trainable parameters) achieves F1 = 0.837 [0.826, 0.847], significantly outperforming turn-level voting baselines (best F1 = 0.727, p < 0.001). Shuffling turn order causes 55% of correctly classified attacks to flip to incorrect, confirming genuine temporal learning. We also evaluate hierarchical and concatenated DistilBERT baselines (5.5M to 66.4M parameters), which achieve F1 = 0.976 to 0.992 but require 200 to 2,460x more trainable parameters. The parameter efficiency of the dual-encoder design makes it deployable on edge hardware where transformer models are impractical.
 
 ## 1. Introduction
 
-Large language model systems deployed in production face a growing class of attacks that exploit the multi-turn nature of conversational interaction. Unlike traditional prompt injection — where a single malicious message attempts to override the model's instructions — distributed attacks spread malicious intent across several turns of apparently normal conversation. The Crescendo pattern (Russinovich et al., 2025) gradually escalates requests across turns, each individually innocuous, until the cumulative context enables the final exploitative request. The Foot-in-the-Door technique (2025) leverages compliance momentum: small, reasonable requests in early turns make the model more likely to comply with larger requests later.
+Large language model systems deployed in production face a growing class of attacks that exploit the multi-turn nature of conversational interaction. Traditional prompt injection uses a single malicious message to override the model's instructions. Distributed attacks instead spread malicious intent across several turns of apparently normal conversation. The Crescendo pattern (Russinovich et al., 2025) gradually escalates requests across turns, each individually innocuous, until the cumulative context enables the final exploitative request. The Foot-in-the-Door technique (2025) exploits compliance momentum: small, reasonable requests in early turns make the model more likely to comply with larger requests later.
 
-These attacks exploit a structural weakness in current defenses. Production-grade injection detectors — ProtectAI's DeBERTa, InjecGuard, Rebuff — analyze each message independently. A per-message classifier has no mechanism to carry forward accumulated risk state across turns. An attacker who distributes their payload across five turns, each of which individually scores below the detection threshold, evades the filter entirely. Vassilev (2025) extends Gödel's incompleteness theorem to argue that no single-turn classifier can theoretically detect all such attacks, because the attack signal exists in the relationships between turns rather than in any individual turn's content.
+These attacks exploit a structural weakness in current defenses. Production-grade injection detectors (ProtectAI's DeBERTa, InjecGuard, Rebuff) analyze each message independently. A per-message classifier has no mechanism to carry forward accumulated risk state across turns. An attacker who distributes their payload across five turns, each of which individually scores below the detection threshold, evades the filter entirely. Vassilev (2025) extends Gödel's incompleteness theorem to argue that no single-turn classifier can theoretically detect all such attacks, because the attack signal exists in the relationships between turns rather than in any individual turn's content.
 
-We address this gap with a dual-encoder temporal architecture. A frozen single-turn GRU encoder compresses each conversation turn into a 32-dimensional vector. A trainable sequence LSTM processes these vectors temporally, learning cross-turn patterns that no per-turn classifier can capture. The architecture requires only 27,000 trainable parameters — three orders of magnitude fewer than transformer baselines — making it deployable on resource-constrained edge devices.
+We address this gap with a dual-encoder temporal architecture. A frozen single-turn GRU encoder compresses each conversation turn into a 32-dimensional vector. A trainable sequence LSTM processes these vectors temporally, learning cross-turn patterns that no per-turn classifier can capture. The architecture requires only 27,000 trainable parameters, three orders of magnitude fewer than transformer baselines, making it deployable on resource-constrained edge devices.
 
 Our evaluation uses a shared-prefix dataset designed to minimize vocabulary confounds: each attack conversation shares identical opening turns with a matched benign conversation. We evaluate against 14 baselines and ablations with bootstrap confidence intervals and paired significance tests for all comparisons.
 
@@ -22,7 +22,7 @@ Our evaluation uses a shared-prefix dataset designed to minimize vocabulary conf
 
 Russinovich et al. (2025) introduce the Crescendo attack pattern, demonstrating that a series of gradually escalating requests can bypass safety training in GPT-4, Claude, and Gemini. The attack succeeds because each individual turn falls below the model's refusal threshold, but the accumulated conversational context shifts the model toward compliance. The Foot-in-the-Door technique (2025) draws on social psychology research to show that small initial commitments create compliance momentum exploitable in later turns.
 
-These findings establish that multi-turn attacks represent a qualitatively different threat from single-turn injection. The attack signal is temporal — it exists in the sequence of turns, not in any individual message.
+These findings establish that multi-turn attacks represent a qualitatively different threat from single-turn injection. The attack signal is temporal: it exists in the sequence of turns, not in any individual message.
 
 ### 2.2 Single-Turn Detection
 
@@ -36,7 +36,7 @@ Our work extends temporal modeling to the LLM security domain, where the "sequen
 
 ### 2.4 Dual-Encoder Architectures
 
-Dual-encoder designs have proven effective in settings where two levels of representation are needed. In document retrieval, Karpukhin et al. (2020) use separate query and passage encoders. In video classification, two-stream architectures process spatial and temporal features independently (Simonyan and Zisserman, 2014). Our design applies this principle to conversation analysis: the turn encoder captures per-message features, and the sequence model captures cross-message dynamics. The frozen turn encoder adds a constraint not present in most dual-encoder systems — it forces the temporal model to learn from fixed representations rather than jointly optimizing both levels.
+Dual-encoder designs have proven effective in settings where two levels of representation are needed. In document retrieval, Karpukhin et al. (2020) use separate query and passage encoders. In video classification, two-stream architectures process spatial and temporal features independently (Simonyan and Zisserman, 2014). Our design applies this principle to conversation analysis: the turn encoder captures per-message features, and the sequence model captures cross-message dynamics. The frozen turn encoder adds a constraint not present in most dual-encoder systems, forcing the temporal model to learn from fixed representations rather than jointly optimizing both levels.
 
 ### 2.5 Formal Limitations
 
@@ -50,7 +50,7 @@ No public dataset of multi-turn distributed prompt injection attacks exists. We 
 
 Each conversation is generated as a matched pair. A conversational prefix of *k* user turns (sampled uniformly from {3, 4, 5}) establishes a natural topic. From this shared prefix, two continuations branch: one benign (natural topic continuation) and one attack (distributed injection). Both continuations run for 3-5 additional user turns, producing conversations of 6-9 user turns (12-19 turns including assistant responses).
 
-The shared-prefix design eliminates vocabulary-level confounds in the opening turns. A first-turn-only classifier achieves F1 = 0.35 on this data — chance level for balanced classes. This means any model that achieves above-chance performance must rely on information from the post-branch turns, where attack and benign conversations diverge.
+The shared-prefix design eliminates vocabulary-level confounds in the opening turns. A first-turn-only classifier achieves F1 = 0.35 on this data, which is chance level for balanced classes. This means any model that achieves above-chance performance must rely on information from the post-branch turns, where attack and benign conversations diverge.
 
 ### 3.2 Attack Strategies
 
@@ -97,7 +97,7 @@ Three mechanisms guard against artifacts:
 | Max-vote BoW | 0.684 ± 0.001 | < 0.70 | PASS |
 | Mean-vote BoW | 0.926 ± 0.006 | < 0.65 | FAIL |
 
-Three of seven pass. The first-turn and conversation-length gates confirm the shared-prefix design eliminates early-turn and structural confounds. The BoW failures indicate residual vocabulary differences in post-branch turns — attack continuations use somewhat different vocabulary because they pursue different conversational goals. The turn-order sensitivity analysis (Section 6.3) demonstrates that the temporal model relies on ordering information inaccessible to BoW classifiers.
+Three of seven pass. The first-turn and conversation-length gates confirm the shared-prefix design eliminates early-turn and structural confounds. The BoW failures indicate residual vocabulary differences in post-branch turns, since attack continuations use somewhat different vocabulary because they pursue different conversational goals. The turn-order sensitivity analysis (Section 6.3) demonstrates that the temporal model relies on ordering information inaccessible to BoW classifiers.
 
 ### 3.5 Dataset Statistics
 
@@ -172,12 +172,12 @@ All results on the v3 test set (5,130 sequences). 95% bootstrap CIs from 1000 re
 | Reversed turns | 0.833 | [0.821, 0.844] | 0.916 | 27K |
 | Shuffled turns | 0.760 | [0.748, 0.772] | 0.849 | 27K |
 | Mean pool | 0.755 | [0.743, 0.768] | 0.839 | 27K |
-| A10 top-3-mean voting | 0.727 | — | — | 0 |
+| A10 top-3-mean voting | 0.727 | - | - | 0 |
 | Max pool | 0.719 | [0.705, 0.733] | 0.819 | 27K |
-| A10 max-vote | 0.706 | — | — | 0 |
+| A10 max-vote | 0.706 | - | - | 0 |
 | Prefix-only | 0.667 | [0.655, 0.679] | 0.500 | 27K |
 | Cosine baseline | 0.612 | [0.596, 0.627] | 0.642 | 0 |
-| A10 mean-vote | 0.231 | — | — | 0 |
+| A10 mean-vote | 0.231 | - | - | 0 |
 
 ### 6.2 Statistical Significance
 
@@ -194,7 +194,7 @@ Paired one-sided bootstrap tests (1000 resamples):
 | DistilBERT-hier > temporal LSTM | +0.139 | < 0.001 | Yes |
 | DistilBERT-concat > temporal LSTM | +0.155 | < 0.001 | Yes |
 
-The first four comparisons establish the core claim: temporal LSTM modeling significantly outperforms all turn-level aggregation methods. The shuffled-turns comparison uses the same model, same parameters, same data — only the turn order differs. The continuation-vs-prefix comparison confirms that post-branch turns carry the discriminative signal (+0.179 F1), consistent with the shared-prefix design. Both DistilBERT variants significantly outperform the temporal LSTM, establishing the accuracy-efficiency tradeoff.
+The first four comparisons establish the core claim: temporal LSTM modeling significantly outperforms all turn-level aggregation methods. The shuffled-turns comparison uses the same model, same parameters, same data; only the turn order differs. The continuation-vs-prefix comparison confirms that post-branch turns carry the discriminative signal (+0.179 F1), consistent with the shared-prefix design. Both DistilBERT variants significantly outperform the temporal LSTM, establishing the accuracy-efficiency tradeoff.
 
 Under Bonferroni correction for 8 comparisons (adjusted alpha = 0.00625), all significant results remain significant since every reported p-value is below 0.001. The Holm-Bonferroni sequential procedure yields the same conclusion.
 
@@ -232,7 +232,7 @@ Fragment distribution is easiest to detect because it produces the most distinct
 
 ### 6.6 Ablation Analysis
 
-**Turn-level voting (A10)**: Using the same frozen GRU encoder as the temporal LSTM, we score each turn independently and aggregate via max, mean, or top-3-mean. Best voting F1 = 0.727 (top-3-mean), 11 points below temporal LSTM (p < 0.001). The gap cannot be explained by encoder quality or training data — the only difference is the presence of cross-turn processing.
+**Turn-level voting (A10)**: Using the same frozen GRU encoder as the temporal LSTM, we score each turn independently and aggregate via max, mean, or top-3-mean. Best voting F1 = 0.727 (top-3-mean), 11 points below temporal LSTM (p < 0.001). The gap cannot be explained by encoder quality or training data; the only difference is the presence of cross-turn processing.
 
 **Shuffled vs ordered**: Random turn permutation drops F1 by 7.7 points (p < 0.001). Same model, same parameters, same data. The LSTM learns from turn order.
 
@@ -262,11 +262,11 @@ The turn-order gap (55% flip rate on shuffle) and the voting gap (+0.131 over ma
 
 ### 7.2 Parameter Efficiency
 
-The temporal LSTM achieves F1 = 0.837 with 27,000 trainable parameters. Concatenated DistilBERT achieves 0.992 with 66.4M — a 2,460x parameter ratio. The dual-encoder design is 200x smaller even than hierarchical DistilBERT (5.5M trainable).
+The temporal LSTM achieves F1 = 0.837 with 27,000 trainable parameters. Concatenated DistilBERT achieves 0.992 with 66.4M, a 2,460x parameter ratio. The dual-encoder design is 200x smaller even than hierarchical DistilBERT (5.5M trainable).
 
 This efficiency matters for deployment. The temporal LSTM runs inference in under 5ms per conversation on an NVIDIA Jetson Orin AGX (Ampere GPU). DistilBERT requires 40-80ms per conversation for the concatenated variant. On CPU-only servers or mobile edge devices, the gap is larger.
 
-The efficiency comes from the architectural separation: the frozen turn encoder compresses 256-token turns into 32-dimensional vectors, and the sequence LSTM operates entirely in this compressed space. The model never processes raw text during temporal analysis — it works with the GRU's summary of each turn.
+The efficiency comes from the architectural separation: the frozen turn encoder compresses 256-token turns into 32-dimensional vectors, and the sequence LSTM operates entirely in this compressed space. The model never processes raw text during temporal analysis; it works with the GRU's summary of each turn.
 
 ### 7.3 Residual Confounds
 
@@ -274,7 +274,7 @@ The confound gate battery reveals that unigram/bigram BoW classifiers achieve F1
 
 Three observations contextualize this result:
 
-First, the vocabulary confound concentrates in post-branch turns. The shared prefix design successfully eliminates confounds in the opening turns (first-turn F1 = 0.35). The remaining confound reflects the genuine fact that attack continuations use somewhat different vocabulary than benign ones — they discuss different topics because they pursue different goals.
+First, the vocabulary confound concentrates in post-branch turns. The shared prefix design successfully eliminates confounds in the opening turns (first-turn F1 = 0.35). The remaining confound reflects the genuine fact that attack continuations use somewhat different vocabulary than benign ones because they discuss different topics and pursue different goals.
 
 Second, the temporal model operates in a 32-dimensional embedding space where raw vocabulary is already compressed away. The model cannot "read" the words in each turn; it processes the GRU's summary of each turn's injection-likeness. The BoW confound is inaccessible to the temporal model by construction.
 
@@ -288,11 +288,11 @@ Per-tier analysis shows adversarial sequences (F1 = 0.802) are genuinely harder,
 
 Examining the error patterns more closely, false negatives cluster in conversations where the attack goal closely matches the natural topic of the shared prefix. For example, a conversation about home security that transitions into requesting lockpicking instructions looks similar to a benign conversation about physical security measures. The GRU encoder's 32-dimensional compression loses the semantic distinction between "discussing security measures" and "requesting attack instructions" because both share security-related vocabulary. This compression-induced ambiguity represents the fundamental tradeoff of the dual-encoder design: the same compression that prevents vocabulary confounds also prevents fine-grained semantic discrimination.
 
-False positives concentrate in conversations where benign continuations involve unusually specific or directive language — technical instructions, step-by-step guides, or detailed how-to content. The model interprets the shift from casual conversation to structured, imperative language as an escalation pattern resembling instruction layering. This failure mode suggests that the model has partially learned a proxy for "conversational register shift" rather than purely detecting malicious intent.
+False positives concentrate in conversations where benign continuations involve unusually specific or directive language, such as technical instructions, step-by-step guides, or detailed how-to content. The model interprets the shift from casual conversation to structured, imperative language as an escalation pattern resembling instruction layering. This failure mode suggests that the model has partially learned a proxy for "conversational register shift" rather than purely detecting malicious intent.
 
 ### 7.5 Attention Pattern Analysis
 
-The attention variant (iter6) provides interpretability through turn-level attention weights. On correctly classified attack sequences, attention concentrates on the turns immediately before and during the exploitation phase — typically turns 4-6 in a 7-turn conversation. On fragment distribution attacks, attention peaks correspond to turns containing payload fragments, suggesting the model has learned to weight the turns that contribute most to the cumulative attack signal.
+The attention variant (iter6) provides interpretability through turn-level attention weights. On correctly classified attack sequences, attention concentrates on the turns immediately before and during the exploitation phase, typically turns 4-6 in a 7-turn conversation. On fragment distribution attacks, attention peaks correspond to turns containing payload fragments, suggesting the model has learned to weight the turns that contribute most to the cumulative attack signal.
 
 The attention weights also reveal an asymmetry between attack strategies. For gradual escalation, attention is distributed more uniformly across turns, reflecting the gradual nature of the escalation. For context priming, attention peaks at the pivot point where the conversation shifts from trust-building to exploitation. These patterns are consistent with the theoretical structure of each strategy and provide evidence that the model learns strategy-appropriate temporal representations.
 
@@ -302,7 +302,7 @@ Despite these interpretable patterns, attention does not improve classification 
 
 **Synthetic data**: All conversations are generated by a single LLM (Claude Sonnet 4.6). Real-world distributed attacks would exhibit greater diversity in phrasing, domain context, and social engineering sophistication. The model's performance on naturally occurring attacks is unknown.
 
-**Single source model**: Cross-model generalization — detecting attacks generated by GPT-4, Gemini, or open-weight models — has not been tested. Stylistic differences between LLMs may affect the transferability of learned patterns.
+**Single source model**: Cross-model generalization (detecting attacks generated by GPT-4, Gemini, or open-weight models) has not been tested. Stylistic differences between LLMs may affect the transferability of learned patterns.
 
 **Residual vocabulary confounds**: Despite the shared-prefix design, BoW classifiers achieve F1 > 0.93 on training data. While the temporal model cannot exploit vocabulary by construction, this confound complicates the interpretation of ablation results that do have text access (e.g., DistilBERT baselines).
 
@@ -326,7 +326,7 @@ Despite these interpretable patterns, attention does not improve classification 
 
 We present a dual-encoder architecture for detecting distributed prompt injection attacks in multi-turn conversations. The temporal LSTM achieves F1 = 0.837 with 27,000 trainable parameters, significantly outperforming turn-level voting baselines (p < 0.001). Turn-order sensitivity analysis confirms genuine temporal learning: 55% of correctly classified attacks flip to incorrect when turns are shuffled.
 
-The architecture's parameter efficiency — three orders of magnitude fewer trainable parameters than DistilBERT baselines — enables deployment on resource-constrained edge devices. The frozen turn encoder provides a natural decomposition: single-turn detection expertise is preserved while the sequence LSTM learns the cross-turn patterns that distributed attacks create.
+The architecture's parameter efficiency, with three orders of magnitude fewer trainable parameters than DistilBERT baselines, enables deployment on resource-constrained edge devices. The frozen turn encoder provides a natural decomposition: single-turn detection expertise is preserved while the sequence LSTM learns the cross-turn patterns that distributed attacks create.
 
 Transformer baselines with full text access achieve higher absolute performance (F1 = 0.976-0.992), establishing an upper bound on what is achievable with current model capacity. The dual-encoder design occupies a different point on the accuracy-efficiency frontier: it trades absolute performance for deployability, interpretability (via attention weights), and architectural transparency (the model operates on compressed turn representations, not raw text).
 

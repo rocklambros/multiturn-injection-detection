@@ -1,3 +1,6 @@
+<!-- Render with: pandoc presentation.md -t beamer -o presentation.pdf -->
+<!-- Or use Marp: marp presentation.md --pdf -->
+
 # Multi-Turn Distributed Prompt Injection Detection
 ## Presentation Slides (10 minutes)
 
@@ -21,7 +24,7 @@ May 2026
 - ProtectAI's DeBERTa: **99%+ F1** on published benchmarks
 - But only on **known attack distributions**; novel attacks evade detection
 
-### But Real Attacks Are Multi-Turn
+### Real Attacks Are Multi-Turn
 
 ```
 Turn 1: "I'm a security researcher testing our systems."     ← benign
@@ -129,7 +132,7 @@ Turn N → [GRU Turn Encoder] → 32-dim vector ─┘
 
 ---
 
-## Slide 8: Turn-Order Sensitivity — The Strongest Evidence
+## Slide 8: Turn-Order Sensitivity, the Strongest Evidence
 
 ### Shuffling Turns Breaks Detection
 
@@ -212,13 +215,13 @@ The dual-encoder achieves **F1 = 0.837 with no pretrained weights and no fine-tu
 ## Q&A Preparation
 
 **Q: Why not just use DistilBERT for everything?**  
-A: Concatenated DistilBERT does win on accuracy (F1=0.992). But it needs 66.4M trainable params and ~80ms per conversation on Jetson. The temporal LSTM achieves 0.837 with 27K params and ~5ms. For edge deployment where transformer models are impractical, the dual-encoder is the viable option.
+A: Concatenated DistilBERT does win on accuracy (F1=0.992). It needs 66.4M trainable params and ~80ms per conversation on Jetson, however. The temporal LSTM achieves 0.837 with 27K params and ~5ms. For edge deployment where transformer models are impractical, the dual-encoder is the viable option.
 
-**Q: The BoW confound gates fail — doesn't that invalidate the temporal results?**  
+**Q: The BoW confound gates fail. Doesn't that invalidate the temporal results?**  
 A: The temporal model operates in a 32-dimensional embedding space where raw vocabulary is compressed away. The turn-order sensitivity test (55% flip rate) demonstrates reliance on ordering inaccessible to BoW classifiers. The BoW confound exists in the data but is architecturally inaccessible to the temporal model.
 
 **Q: How realistic is the synthetic data?**  
-A: It's a limitation. The shared-prefix design and four strategies are based on published attack research. The difficulty tiers produce measurable performance gradients. But real attacks may use more nuanced social engineering. An annotation protocol is prepared (300 sequences, 3 annotators, Krippendorff's alpha ≥ 0.60).
+A: It's a limitation. The shared-prefix design and four strategies are based on published attack research. The difficulty tiers produce measurable performance gradients. Real attacks may use more nuanced social engineering, however. An annotation protocol is prepared (300 sequences, 3 annotators, Krippendorff's alpha ≥ 0.60).
 
 **Q: Can this run in production?**  
 A: The dual-encoder adds ~5ms per turn on Jetson Orin. Online detection (classifying incrementally as each turn arrives) is the natural production path. The frozen turn encoder processes each new turn independently; the sequence LSTM updates its hidden state incrementally.

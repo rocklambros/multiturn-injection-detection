@@ -10,9 +10,9 @@
 
 ### 1.1 The Problem
 
-Single-turn prompt injection detection achieves high accuracy on known attack patterns — ProtectAI's DeBERTa model reaches 99%+ F1 on published benchmarks — but this performance is limited to known attack distributions. Novel attacks, adversarially crafted inputs, and multi-turn strategies routinely evade these detectors (InjecGuard, 2024; Vassilev, 2025). Real-world attacks against AI agent systems increasingly distribute malicious intent across multiple conversation turns, where each individual turn appears benign in isolation.
+Single-turn prompt injection detection achieves high accuracy on known attack patterns. ProtectAI's DeBERTa model reaches 99%+ F1 on published benchmarks, yet this performance is limited to known attack distributions. Novel attacks, adversarially crafted inputs, and multi-turn strategies routinely evade these detectors (InjecGuard, 2024; Vassilev, 2025). Real-world attacks against AI agent systems increasingly distribute malicious intent across multiple conversation turns, where each individual turn appears benign in isolation.
 
-This is the **Crescendo attack pattern** (Russinovich et al., USENIX Security 2025): an attacker gradually escalates across turns, establishing trust and context before making the exploitative request. The **Foot-in-the-Door technique** (EMNLP 2025) similarly leverages compliance momentum across turns. Vassilev (2025) extends Gödel's incompleteness theorem to argue that no single-turn classifier can theoretically detect all such attacks.
+This is the **Crescendo attack pattern** (Russinovich et al., USENIX Security 2025): an attacker gradually escalates across turns, establishing trust and context before making the exploitative request. The **Foot-in-the-Door technique** (EMNLP 2025) similarly exploits compliance momentum across turns. Vassilev (2025) extends Gödel's incompleteness theorem to argue that no single-turn classifier can theoretically detect all such attacks.
 
 ### 1.2 Why Deep Learning
 
@@ -53,14 +53,14 @@ Removals: 167 exact duplicates, 40 near-duplicates, 132 empty/short, 489 too-lon
 
 No public dataset of multi-turn distributed attacks exists. We generated **27,180 synthetic conversations** (18,754 train / 3,296 val / 5,130 test) using a shared-prefix architecture and the Anthropic API (Claude Sonnet 4.6).
 
-**Shared-prefix design**: Each conversation is generated as a matched pair — one benign continuation and one attack continuation branching from an identical conversational prefix. The prefix length *k* is sampled uniformly from {3, 4, 5} user turns. Both continuations run for 3-5 additional turns, producing conversations of 6-9 user turns total (12-19 turns including assistant responses). This paired structure eliminates vocabulary-level confounds in the opening turns: a first-turn-only classifier achieves F1 = 0.35 (chance level).
+**Shared-prefix design**: Each conversation is generated as a matched pair: one benign continuation and one attack continuation branching from an identical conversational prefix. The prefix length *k* is sampled uniformly from {3, 4, 5} user turns. Both continuations run for 3-5 additional turns, producing conversations of 6-9 user turns total (12-19 turns including assistant responses). This paired structure eliminates vocabulary-level confounds in the opening turns: a first-turn-only classifier achieves F1 = 0.35 (chance level).
 
 **Attack strategies**:
 
 | Strategy | % of Attacks | Pattern | Research Basis |
 |----------|:---:|---------|----------------|
 | Fragment distribution | 45% | Split injection across 3-5 turns, interleaved with on-topic filler | Evasion of per-message filters |
-| Gradual escalation | 25% | Crescendo pattern — each turn nudges toward the attack goal | Russinovich et al. (USENIX Security 2025) |
+| Gradual escalation | 25% | Crescendo pattern, where each turn nudges toward the attack goal | Russinovich et al. (USENIX Security 2025) |
 | Context priming | 15% | Establish persona/authority early, exploit later | Foot-in-the-Door (EMNLP 2025) |
 | Instruction layering | 15% | Each turn adds one constraint, cumulatively overriding safety | Incremental constraint injection |
 
@@ -79,7 +79,24 @@ No public dataset of multi-turn distributed attacks exists. We generated **27,18
 
 Custom vocabulary of 20,000 tokens built from training data only. Max sequence length: 256 tokens. OOV rate: 0.87% on training, 1.19% on validation.
 
-### 2.5 Chollet Heuristic Analysis
+### 2.5 Input/Output Specification
+
+| Variable | Type | Shape | Range | Encoding |
+|----------|------|-------|-------|----------|
+| Raw text | string | variable length | n/a | Unprocessed user input |
+| Token IDs (single-turn) | LongTensor | (batch, 256) | [0, 19999] | Vocabulary lookup, post-padded with 0 |
+| Token IDs (multi-turn) | LongTensor | (batch, 10, 256) | [0, 19999] | Each turn tokenized independently |
+| Turn mask | FloatTensor | (batch, 10) | {0, 1} | 1 = real turn, 0 = padding |
+| Model output | float | (batch, 1) | [0, 1] | Sigmoid probability of injection |
+| Label | int | scalar | {0, 1} | 0 = benign, 1 = injection |
+
+Raw text is lowercased and split on whitespace. Each word maps to an integer via a vocabulary built from training data only (20,000 tokens). Sequences shorter than 256 tokens are post-padded with zeros; sequences longer than 256 are truncated. For multi-turn input, each turn is encoded independently, and conversations with fewer than 10 turns are padded with zero-vectors. The turn mask distinguishes real turns from padding.
+
+### 2.6 Metric Selection
+
+With 64% benign and 36% injection samples, a classifier that always predicts "benign" achieves 64% accuracy while catching zero attacks. Accuracy rewards correct predictions on the majority class, masking complete failure on the minority class. F1 (the harmonic mean of precision and recall) penalizes both missed attacks (low recall) and false alarms (low precision), making it the appropriate primary metric for this task. The security cost asymmetry reinforces this choice: a missed injection (false negative) can lead to system compromise, while a false alarm (false positive) results only in a human review.
+
+### 2.7 Chollet Heuristic Analysis
 
 Following Chollet (Deep Learning with Python, Chapters 11/15), the ratio of training samples to mean words per sample (51,373 / 87.3 = 588, well below the 1,500 threshold) predicts that bag-of-bigrams models should outperform sequence and transformer models on single-turn data. This prediction is empirically validated.
 
@@ -158,9 +175,9 @@ Five ablation experiments isolate what drives temporal detection:
 | BiLSTM d=0.3 (Iter 3) | 0.815 | 0.884 | 0.942 |
 | GRU (Iter 4) | 0.815 | 0.885 | 0.946 |
 | Custom Transformer (Iter 4b) | 0.808 | 0.880 | 0.944 |
-| DistilBERT frozen (Iter 4c) | 0.806 | 0.873 | — |
+| DistilBERT frozen (Iter 4c) | 0.806 | 0.873 | 0.942 |
 
-**Encoder decision**: GRU — competitive F1 with fewer parameters than BiLSTM. Selected as the frozen turn encoder for all multi-turn experiments.
+**Encoder decision**: GRU, which offers competitive F1 with fewer parameters than BiLSTM. Selected as the frozen turn encoder for all multi-turn experiments.
 
 **Chollet heuristic validated**: TF-IDF + RF achieves the highest single-turn F1 at 0.834, confirming the prediction that at ratio 588, simpler models outperform sequence and transformer architectures.
 
@@ -179,12 +196,12 @@ All results below are on the v3 test set (5,130 sequences, 4 difficulty tiers, b
 | Reversed turns | 0.833 | [0.821, 0.844] | 0.916 | 27K |
 | Shuffled turns | 0.760 | [0.748, 0.772] | 0.849 | 27K |
 | Mean pool | 0.755 | [0.743, 0.768] | 0.839 | 27K |
-| A10 top-3-mean voting | 0.727 | — | — | 0 |
+| A10 top-3-mean voting | 0.727 | n/a | n/a | 0 |
 | Max pool | 0.719 | [0.705, 0.733] | 0.819 | 27K |
-| A10 max-vote | 0.706 | — | — | 0 |
+| A10 max-vote | 0.706 | n/a | n/a | 0 |
 | Prefix-only | 0.667 | [0.655, 0.679] | 0.500 | 27K |
 | Cosine baseline | 0.612 | [0.596, 0.627] | 0.642 | 0 |
-| A10 mean-vote | 0.231 | — | — | 0 |
+| A10 mean-vote | 0.231 | n/a | n/a | 0 |
 
 ### 4.3 Per-Tier Breakdown
 
@@ -232,7 +249,7 @@ Seven gates run on 5-fold cross-validation of training data:
 | Unigram BoW | 0.938 | < 0.60 | FAIL |
 | Bigram BoW | 0.945 | < 0.65 | FAIL |
 | Last-turn only | 0.963 | < 0.65 | FAIL |
-| Mean-vote BoW | 0.930 | < 0.70 | FAIL |
+| Mean-vote BoW | 0.926 | < 0.70 | FAIL |
 
 The passing gates confirm the shared-prefix design eliminates early-turn and length confounds. The failing gates indicate that vocabulary differences persist in post-branch turns. The turn-order sensitivity analysis (55% flip rate) demonstrates that the temporal LSTM relies on ordering information that BoW classifiers cannot exploit.
 
@@ -243,20 +260,28 @@ The passing gates confirm the shared-prefix design eliminates early-turn and len
 ### 5.1 Why Temporal Modeling Works
 
 The dual-encoder architecture succeeds because it separates two concerns:
-1. **What does each turn say?** (turn encoder — frozen, compression to 32-dim)
-2. **How do turns relate over time?** (sequence LSTM — learns temporal patterns)
+1. **What does each turn say?** (turn encoder, frozen, compressing to 32-dim)
+2. **How do turns relate over time?** (sequence LSTM, which learns temporal patterns)
 
 The turn-level voting gap (+0.131 F1 over max-vote, p < 0.001) demonstrates that independent per-turn scoring cannot recover the cross-turn signal. The shuffled-turns gap (+0.077 F1, p < 0.001) confirms that turn order carries genuine information. These two results together establish that the LSTM learns temporal relationships, not bag-of-turns features.
 
 ### 5.2 The DistilBERT Question
 
-Concatenated DistilBERT achieves F1 = 0.992 with 66.4M trainable parameters versus our 0.837 with 27K — a 2,460x parameter ratio. This gap has two interpretations:
+Concatenated DistilBERT achieves F1 = 0.992 with 66.4M trainable parameters versus our 0.837 with 27K, a 2,460x parameter ratio. This gap has two interpretations:
 
 The DistilBERT models have full text access and can exploit both temporal and vocabulary signals, including the residual vocabulary differences that the confound gates flagged. Our model operates in a 32-dimensional embedding space where vocabulary is compressed away.
 
 The comparison that matters is not "does our model beat DistilBERT" (it does not) but "does temporal modeling add value beyond per-turn classification" (it does, significantly). The 27K-parameter temporal model is deployable on resource-constrained devices where DistilBERT is impractical.
 
-### 5.3 Limitations
+### 5.3 What the Autoencoder Ablation Reveals
+
+Replacing the injection-trained GRU encoder with a reconstruction-trained autoencoder yields F1 = 0.845, slightly exceeding the primary model (F1 = 0.837). This result indicates that the sequence LSTM drives temporal detection regardless of whether the turn encoder was trained for injection classification. The GRU's injection-detection expertise does not transfer to the multi-turn task in a measurable way.
+
+Two explanations are plausible. The injection-trained GRU's 32-dimensional output may already compress away the features most useful for temporal analysis, retaining only an "injection-likeness" score that the sequence LSTM must work around rather than with. Alternatively, the autoencoder's reconstruction objective may preserve richer turn representations that happen to be equally informative for temporal pattern recognition. Distinguishing these explanations would require probing the information content of each encoder's representations, which we leave as future work.
+
+This finding tempers the dual-encoder narrative. The architecture's value lies in the frozen-encoder-plus-temporal-LSTM decomposition itself, not in the specific training objective of the encoder. Any encoder that produces meaningful fixed-dimensional turn representations appears sufficient for temporal detection.
+
+### 5.4 Limitations
 
 - **Synthetic data**: All conversations generated by Claude Sonnet 4.6. Performance on naturally occurring multi-turn attacks is unknown.
 - **Residual vocabulary confounds**: BoW classifiers achieve F1 > 0.93 on training data. The temporal signal operates on top of this confound.
@@ -264,7 +289,7 @@ The comparison that matters is not "does our model beat DistilBERT" (it does not
 - **Fixed conversation length**: 6-9 user turns. Behavior on 20+ turn conversations is untested.
 - **English only**: Non-English injection patterns are not represented.
 
-### 5.4 Future Work
+### 5.5 Future Work
 
 1. **Cross-domain transfer**: Test on multi-turn attack data from different domains
 2. **Real-world validation**: Deploy as a secondary filter behind production AI systems
