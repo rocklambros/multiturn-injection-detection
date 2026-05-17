@@ -51,7 +51,7 @@ PHASE_2_TASKS = [
     "ablation_autoencoder", "ablation_mean_pool", "ablation_max_pool",
 ]
 GPU_PREFERENCES = [
-    "NVIDIA RTX 4090",
+    "NVIDIA GeForce RTX 4090",
     "NVIDIA L40S",
     "NVIDIA RTX A6000",
     "NVIDIA A100-SXM4-80GB",
