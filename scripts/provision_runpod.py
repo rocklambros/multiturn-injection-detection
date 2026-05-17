@@ -51,12 +51,11 @@ PHASE_2_TASKS = [
     "ablation_autoencoder", "ablation_mean_pool", "ablation_max_pool",
 ]
 GPU_PREFERENCES = [
-    "NVIDIA RTX A6000",
-    "NVIDIA L40S",
-    "NVIDIA L40",
-    "NVIDIA A100 80GB PCIe",
-    "NVIDIA A100-SXM4-80GB",
     "NVIDIA RTX 4090",
+    "NVIDIA L40S",
+    "NVIDIA RTX A6000",
+    "NVIDIA A100-SXM4-80GB",
+    "NVIDIA A100 80GB PCIe",
 ]
 IMAGE = "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04"
 VOLUME_SIZE = 50
