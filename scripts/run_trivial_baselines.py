@@ -278,6 +278,49 @@ def run_per_turn_voting_baseline(data):
     }
 
 
+def run_generation_method_confound(data):
+    """Check if template vs LLM text is trivially separable by BoW."""
+    print("\n=== Confound Check: Generation Method Separability ===")
+
+    methods = set()
+    for split in data.values():
+        for s in split:
+            methods.add(s.get("generation_method", "unknown"))
+
+    if len(methods) <= 1:
+        print(f"  Only one generation method found ({methods}), skipping.")
+        return {"skipped": True, "reason": "single_method"}
+
+    def to_text(seq):
+        return " ".join(extract_turns_text(seq))
+
+    train_texts = [to_text(s) for s in data["train"]]
+    train_method_labels = [1 if s.get("generation_method") == "template_fragment" else 0
+                           for s in data["train"]]
+    test_texts = [to_text(s) for s in data["test"]]
+    test_method_labels = [1 if s.get("generation_method") == "template_fragment" else 0
+                          for s in data["test"]]
+
+    vec = CountVectorizer(max_features=5000, stop_words="english")
+    X_train = vec.fit_transform(train_texts)
+    X_test = vec.transform(test_texts)
+
+    clf = LogisticRegression(max_iter=1000, random_state=42)
+    clf.fit(X_train, train_method_labels)
+
+    preds = clf.predict(X_test)
+    acc = accuracy_score(test_method_labels, preds)
+    f1 = f1_score(test_method_labels, preds, zero_division=0)
+    print(f"  Method-separability Accuracy: {acc:.4f}")
+    print(f"  Method-separability F1:       {f1:.4f}")
+
+    if f1 > 0.80:
+        print("  WARNING: Template data is trivially separable from LLM data.")
+        print("  Template sequences MUST stay separated from primary training set.")
+
+    return {"accuracy": acc, "f1": f1}
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-dir", default="data/synthetic_v3")
@@ -295,6 +338,7 @@ def main():
     results["last_turn"] = run_single_turn_baseline(data, "last")
     results["generation_method"] = run_method_baseline(data)
     results["per_turn_voting"] = run_per_turn_voting_baseline(data)
+    results["generation_method_confound"] = run_generation_method_confound(data)
 
     print("\n" + "=" * 60)
     print("TRIVIAL BASELINE SUMMARY")
@@ -302,13 +346,28 @@ def main():
     print(f"{'Baseline':<25} {'Accuracy':>10} {'F1':>10} {'AUC':>10}")
     print("-" * 60)
     for name, r in results.items():
+        if "accuracy" not in r:
+            for sub_name, sub_r in r.items():
+                full_name = f"{name}/{sub_name}"
+                acc = f"{sub_r['accuracy']:.4f}"
+                f1 = f"{sub_r['f1']:.4f}"
+                auc = f"{sub_r.get('auc', 0):.4f}" if 'auc' in sub_r else "N/A"
+                print(f"  {full_name:<23} {acc:>10} {f1:>10} {auc:>10}")
+            continue
         acc = f"{r['accuracy']:.4f}"
         f1 = f"{r['f1']:.4f}"
-        auc = f"{r.get('auc', 'N/A')}" if isinstance(r.get('auc'), str) else f"{r.get('auc', 0):.4f}" if 'auc' in r else "N/A"
+        auc = f"{r.get('auc', 0):.4f}" if 'auc' in r else "N/A"
         print(f"  {name:<23} {acc:>10} {f1:>10} {auc:>10}")
 
-    max_acc = max(r["accuracy"] for r in results.values())
-    max_f1 = max(r["f1"] for r in results.values())
+    flat = {}
+    for name, r in results.items():
+        if "accuracy" in r:
+            flat[name] = r
+        else:
+            for sub_name, sub_r in r.items():
+                flat[f"{name}/{sub_name}"] = sub_r
+    max_acc = max(r["accuracy"] for r in flat.values())
+    max_f1 = max(r["f1"] for r in flat.values())
     print(f"\nMax trivial accuracy: {max_acc:.4f}")
     print(f"Max trivial F1:      {max_f1:.4f}")
 

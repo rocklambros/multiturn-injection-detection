@@ -5,6 +5,27 @@ Multi-turn shape: (batch_size, 10, 256) with mask (batch_size, 10)
 """
 
 import json
+from pathlib import Path
+
+
+def load_sequences(filepath, exclude_method=None, only_method=None):
+    """Load sequences from JSON with optional generation-method filtering.
+
+    Args:
+        filepath: Path to multiturn_{split}.json.
+        exclude_method: If set, drop sequences with this generation_method.
+        only_method: If set, keep only sequences with this generation_method.
+
+    Returns:
+        List of sequence dicts.
+    """
+    with open(filepath) as f:
+        seqs = json.load(f)
+    if only_method:
+        seqs = [s for s in seqs if s.get("generation_method") == only_method]
+    elif exclude_method:
+        seqs = [s for s in seqs if s.get("generation_method") != exclude_method]
+    return seqs
 
 import pandas as pd
 import torch

@@ -8,7 +8,7 @@
 # Multi-Turn Distributed Prompt Injection Detection
 
 **Rock Lambros**  
-April 2026
+May 2026
 
 *Detecting attacks that hide across multiple conversation turns*
 
@@ -72,22 +72,23 @@ Turn N → [GRU Turn Encoder] → 32-dim vector ─┘
 
 ## Slide 5: Data Strategy
 
-### Single-Turn: 73,390 samples (expanded from 16K)
+### Single-Turn: 73,390 samples
 - 8 HuggingFace datasets, cleaned and deduplicated
-- 64% benign / 36% injection
 - **Chollet ratio**: 51,373 / 87.3 = **588** (< 1,500 threshold)
 
-### Multi-Turn: 7,000 synthetic conversations
+### Multi-Turn: 27,180 v3 shared-prefix conversations
 | Strategy | % | Pattern |
 |----------|---|---------|
-| Fragment distribution | 40% | Split injection across turns |
-| Gradual escalation | 30% | Crescendo pattern |
-| Context priming | 20% | Establish persona → exploit |
-| Instruction layering | 10% | Cumulative constraint override |
+| Fragment distribution | 45% | Split injection across turns |
+| Gradual escalation | 25% | Crescendo pattern |
+| Context priming | 15% | Establish persona → exploit |
+| Instruction layering | 15% | Cumulative constraint override |
+
+**Shared-prefix design**: Attack and benign conversations share identical opening turns. First-turn classifier: F1 = 0.35 (chance level). Four difficulty tiers: easy → adversarial.
 
 ---
 
-## Slide 6: Iteration Progression + Chollet Heuristic
+## Slide 6: Single-Turn Results + Chollet Heuristic
 
 ### Single-Turn Results (F1, 73K samples)
 
@@ -107,116 +108,117 @@ Turn N → [GRU Turn Encoder] → 32-dim vector ─┘
 
 ## Slide 7: The Core Finding
 
-### Multi-Turn F1 Gap: +10.3 Points Over Per-Turn, +49.5 Over Chance
+### v3 Results: Full Model Hierarchy with Bootstrap CIs
 
-| Approach | Multi-Turn F1 |
-|----------|--------------|
-| Stratified random (chance) | 0.500 |
-| TF-IDF (concatenated) | 0.656 |
-| GRU per-turn (max prob) | **0.887** |
-| **Multi-turn LSTM** | **0.989** |
-| Multi-turn + Attention | **0.992** |
-| Tuned threshold | **0.995** |
+| Model | F1 | 95% CI | Params |
+|-------|:---:|:---:|------:|
+| Concatenated DistilBERT | 0.992 | [0.989, 0.994] | 66.4M |
+| Hierarchical DistilBERT | 0.976 | [0.971, 0.980] | 5.5M |
+| **Temporal LSTM (iter5)** | **0.837** | **[0.826, 0.847]** | **27K** |
+| +Attention (iter6) | 0.837 | [0.825, 0.848] | 29K |
+| A10 top-3-mean voting | 0.727 | — | 0 |
+| A10 max-vote | 0.706 | — | 0 |
+| Cosine baseline | 0.612 | — | 0 |
 
-**The temporal architecture detects what per-turn classification cannot.**
+**Key comparisons** (paired bootstrap, p < 0.001):
+- Temporal LSTM > max-vote: **+0.131 F1**
+- Temporal LSTM > shuffled: **+0.077 F1**
+- DistilBERT-concat > temporal LSTM: +0.155 (but 2,460x more params)
 
-*(Show cross_iteration_comparison.png)*
-
----
-
-## Slide 7b: Manifold Separation and Gate Dynamics
-
-### How the GRU Encoder Transforms Input
-
-*(Show embedding_space_manifold.png)*
-
-- t-SNE of 2,000 test samples at 3 network stages
-- **Embedding layer**: classes intermingled
-- **GRU hidden state**: partial separation
-- **Dense encoding**: clear clustering
-- Progressive "manifold untangling" (Olah, 2014)
-
-### LSTM Gate Dynamics
-
-*(Show gate_activations_heatmap.png)*
-
-- Forget gate stays high during attacks: retains accumulated context
-- Input gate spikes on escalation turns
-- Benign conversations show uniform gate patterns
+*(Show v3_model_hierarchy.png)*
 
 ---
 
-## Slide 7c: Loss Landscape
+## Slide 8: Turn-Order Sensitivity — The Strongest Evidence
 
-### Optimization Surface Geometry (Li et al. 2018)
+### Shuffling Turns Breaks Detection
 
-*(Show loss_landscape_3d.png)*
+- Take correctly classified attacks
+- Randomly shuffle their turn order
+- Re-run inference through the same model
 
-- 25x25 grid scan along 2 random parameter-space directions
-- ~29K trainable params (frozen encoder excluded)
-- Smooth bowl shape: well-conditioned minimum
-- Circular contours: isotropic curvature, no narrow valleys
+### Results
 
----
+- **55% of correctly classified attacks flip to incorrect**
+- Ordered F1: 0.837 → Shuffled F1: 0.489
+- Flip rate uniform across tiers (54-56%)
 
-## Slide 8: Attention Visualization
-
-### Where Does the Model Look?
-
-- Attention concentrates on turns that escalate toward the injection payload
-- Later turns in attack sequences receive higher attention weight
-- Provides interpretability for security analysts
-
-*(Show attention heatmap from results/iter6_attention/)*
+**A model that relied on vocabulary or per-turn features would be unaffected by shuffling.** The LSTM learns genuine temporal patterns.
 
 ---
 
-## Slide 9: Security Implications
+## Slide 9: Ablation Results
 
-### Threshold Tuning
+### What Drives the Temporal Signal?
 
-- **Default (0.5)**: treats FP and FN equally
-- **Optimized (0.64)**: best F1 on validation
-- In production: missed injection → system compromise; false alarm → human review
+| Ablation | F1 | Gap from iter5 |
+|----------|:---:|:---:|
+| iter5 (ordered) | 0.837 | baseline |
+| Continuation-only | 0.846 | +0.009 |
+| Reversed turns | 0.833 | -0.004 |
+| Shuffled turns | 0.760 | **-0.077** |
+| Mean pool | 0.755 | **-0.082** |
+| A10 top-3 voting | 0.727 | **-0.110** |
+| Prefix-only | 0.667 | **-0.170** |
 
-### Operating Points
+### Per-Strategy: What's Hardest to Detect?
 
-| Threshold | F1 |
-|-----------|-----|
-| 0.50 | 0.992 |
-| 0.64 | 0.995 |
+| Strategy | iter5 F1 |
+|----------|:---:|
+| Fragment distribution | 0.776 |
+| Gradual escalation | 0.676 |
+| Context priming | 0.628 |
+| Instruction layering | 0.605 |
+
+*(Show v3_ablation_summary.png and v3_strategy_heatmap.png)*
 
 ---
 
-## Slide 10: Conclusions & Future Work
+## Slide 10: Parameter Efficiency
+
+### 27K Parameters vs 66.4M
+
+| Model | F1 | Trainable Params | Inference (Jetson) |
+|-------|:---:|:---:|:---:|
+| Temporal LSTM | 0.837 | 27K | ~5ms |
+| Hier DistilBERT | 0.976 | 5.5M | ~40ms |
+| Concat DistilBERT | 0.992 | 66.4M | ~80ms |
+
+The dual-encoder achieves **F1 = 0.837 with no pretrained weights and no fine-tuning**. The LSTM operates on 32-dimensional turn embeddings, not raw text.
+
+*(Show v3_param_efficiency.png)*
+
+---
+
+## Slide 11: Conclusions & Future Work
 
 ### What We Showed
 
-1. Single-turn detection works on known patterns but is **not solved**; novel attacks evade it
-2. Temporal modeling (LSTM over turns) closes the multi-turn gap: **+10% F1**
-3. Frozen turn encoder + trainable sequence LSTM = efficient dual architecture
-4. Chollet heuristic predicts model selection: ratio < 1,500 → bag-of-bigrams wins (confirmed)
-5. Attention provides interpretability without performance loss
+1. Temporal modeling detects distributed attacks that per-turn classification cannot
+2. Turn-order sensitivity (55% flip rate) confirms genuine temporal learning
+3. 27K-parameter model significantly outperforms all voting baselines (p < 0.001)
+4. DistilBERT achieves higher absolute F1, but at 2,460x the parameter cost
+5. Difficulty tiers and attack strategies are properly calibrated
 
 ### Limitations & Next Steps
 
-- Synthetic data → need real multi-turn attack datasets
-- LSTM → transformer-based turn encoders (BERT)
-- Batch classification → online detection as turns arrive
-- English only → cross-lingual detection
+- Synthetic data → need real multi-turn attack datasets + human validation
+- Residual BoW confounds in post-branch turns (F1 > 0.93)
+- Online detection: classify as each turn arrives
+- Hybrid architecture: frozen DistilBERT turn encoder + lightweight LSTM
 
 ---
 
 ## Q&A Preparation
 
-**Q: Why not just use BERT/DeBERTa?**  
-A: We compared! DistilBERT (frozen body, F1=0.806) and a custom transformer (F1=0.808) both underperform TF-IDF (F1=0.834). The Chollet heuristic explains why: our ratio of 588 is below 1,500, predicting bag-of-bigrams wins. Transformers need more data to be competitive.
+**Q: Why not just use DistilBERT for everything?**  
+A: Concatenated DistilBERT does win on accuracy (F1=0.992). But it needs 66.4M trainable params and ~80ms per conversation on Jetson. The temporal LSTM achieves 0.837 with 27K params and ~5ms. For edge deployment where transformer models are impractical, the dual-encoder is the viable option.
+
+**Q: The BoW confound gates fail — doesn't that invalidate the temporal results?**  
+A: The temporal model operates in a 32-dimensional embedding space where raw vocabulary is compressed away. The turn-order sensitivity test (55% flip rate) demonstrates reliance on ordering inaccessible to BoW classifiers. The BoW confound exists in the data but is architecturally inaccessible to the temporal model.
 
 **Q: How realistic is the synthetic data?**  
-A: It's a limitation. The four strategies are based on published attack research (Crescendo, FITD), but real attacks may be more nuanced. The architecture would transfer to real data with retraining.
-
-**Q: Why does the bag-of-bigrams model win?**  
-A: Chollet's heuristic (Chapter 11/15): with ratio < 1,500, there aren't enough samples per unit of text complexity for higher-capacity models to learn better representations than TF-IDF bigrams. Confirmed empirically.
+A: It's a limitation. The shared-prefix design and four strategies are based on published attack research. The difficulty tiers produce measurable performance gradients. But real attacks may use more nuanced social engineering. An annotation protocol is prepared (300 sequences, 3 annotators, Krippendorff's alpha ≥ 0.60).
 
 **Q: Can this run in production?**  
-A: The dual-encoder adds ~5ms per turn on Jetson Orin. Online detection (classifying incrementally) is the natural production path.
+A: The dual-encoder adds ~5ms per turn on Jetson Orin. Online detection (classifying incrementally as each turn arrives) is the natural production path. The frozen turn encoder processes each new turn independently; the sequence LSTM updates its hidden state incrementally.

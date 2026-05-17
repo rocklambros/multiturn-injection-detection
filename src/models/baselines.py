@@ -8,8 +8,6 @@ from src.utils.seed import set_global_seed
 set_global_seed(42)
 
 import json
-import os
-from pathlib import Path
 
 import numpy as np
 import pandas as pd

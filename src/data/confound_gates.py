@@ -7,8 +7,6 @@ All gates use 5-fold stratified CV on the training split ONLY.
 Test split is NEVER used for gating decisions.
 """
 
-import json
-from pathlib import Path
 
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer

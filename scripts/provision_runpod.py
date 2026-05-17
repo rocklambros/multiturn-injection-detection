@@ -24,7 +24,7 @@ import os
 import subprocess
 import sys
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -197,7 +197,6 @@ def check_pod_status(pod_id):
         status = pod.get("desiredStatus", "UNKNOWN")
         runtime = pod.get("runtime", {})
         if runtime:
-            gpu_count = runtime.get("gpus", [])
             uptime = runtime.get("uptimeInSeconds", 0)
             return status, uptime
         return status, 0
