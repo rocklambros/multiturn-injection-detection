@@ -57,7 +57,7 @@ GPU_PREFERENCES = [
     "NVIDIA A100-SXM4-80GB",
     "NVIDIA A100 80GB PCIe",
 ]
-IMAGE = "runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04"
+IMAGE = "runpod/pytorch:1.0.2-cu1281-torch280-ubuntu2404"
 VOLUME_SIZE = 50
 CONTAINER_DISK = 20
 PROJECT = "rockcyber/multiturn-injection-detection-v2"
