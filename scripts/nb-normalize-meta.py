@@ -53,6 +53,12 @@ def main() -> int:
     raw = sys.stdin.buffer.read()
     try:
         nb = json.loads(raw)
+        if not isinstance(nb, dict):
+            # Valid JSON but not a notebook object (list, scalar, etc.).
+            # Pass through untouched rather than AttributeError on .get,
+            # which a required filter would surface as a staging failure.
+            sys.stdout.buffer.write(raw)
+            return 0
         metadata = nb.get("metadata")
         if not isinstance(metadata, dict):
             # Not a notebook we recognize. Pass through untouched.

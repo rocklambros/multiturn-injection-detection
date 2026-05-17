@@ -17,7 +17,19 @@ git config filter.nbmeta.smudge cat
 git config filter.nbmeta.required true
 
 # Re-run the filter against already-tracked notebooks so state is
-# consistent immediately, not only on the next edit.
-git -C "$root" add --renormalize . >/dev/null 2>&1 || true
+# consistent immediately, not only on the next edit. Scope the pathspec
+# to the notebooks the filter actually governs (.gitattributes pins it
+# to notebooks/*.ipynb) so setup never restages unrelated worktree
+# files. Let a real failure surface: a broken filter here means every
+# later `git add` of a notebook fails (required=true, set above), so
+# roll that flag back and exit non-zero rather than reporting success.
+if ! git -C "$root" add --renormalize -- 'notebooks/*.ipynb'; then
+    git config --unset filter.nbmeta.required || true
+    echo "ERROR: nbmeta clean filter failed on renormalize." >&2
+    echo "Reverted filter.nbmeta.required so notebook staging is not" >&2
+    echo "blocked. Verify python3 is on PATH and that" >&2
+    echo "scripts/nb-normalize-meta.py runs, then re-run this script." >&2
+    exit 1
+fi
 
 echo "nbmeta filter enabled for this clone."
