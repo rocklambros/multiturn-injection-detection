@@ -165,11 +165,11 @@ def train_distilbert_hier():
     )
 
     optimizer = torch.optim.AdamW(
-        filter(lambda p: p.requires_grad, model.parameters()), lr=2e-5, weight_decay=0.01,
+        filter(lambda p: p.requires_grad, model.parameters()), lr=5e-6, weight_decay=0.01,
     )
     criterion = nn.BCEWithLogitsLoss()
 
-    warmup_steps = len(train_loader) * 2
+    warmup_steps = len(train_loader) * 3
 
     train_model(
         model, train_loader, val_loader,
@@ -178,6 +178,7 @@ def train_distilbert_hier():
         device=device, patience=5,
         wandb_config={"group": "training", "tags": ["v3", "distilbert", "hierarchical"]},
         warmup_steps=warmup_steps,
+        max_nan_rollbacks=5,
     )
 
 
