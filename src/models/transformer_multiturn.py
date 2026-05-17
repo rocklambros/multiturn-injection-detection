@@ -83,14 +83,16 @@ class HierarchicalDistilBERT(nn.Module):
         positions = torch.arange(max_turns, device=input_ids.device).unsqueeze(0).expand(batch_size, -1)
         cls_sequence = cls_sequence + self.turn_position_embedding(positions)
 
-        cls_sequence = cls_sequence * turn_mask.unsqueeze(-1)
+        mask_expanded = turn_mask.unsqueeze(-1)
+        cls_sequence = cls_sequence * mask_expanded
         cls_sequence = self.input_norm(cls_sequence)
 
         # TransformerEncoder expects src_key_padding_mask: True = ignore
         padding_mask = (turn_mask == 0)
         cross_out = self.cross_turn_transformer(cls_sequence, src_key_padding_mask=padding_mask)
+        cross_out = torch.nan_to_num(cross_out, nan=0.0, posinf=0.0, neginf=0.0)
 
         turn_counts = turn_mask.sum(dim=1, keepdim=True).clamp(min=1)
-        pooled = (cross_out * turn_mask.unsqueeze(-1)).sum(dim=1) / turn_counts
+        pooled = (cross_out * mask_expanded).sum(dim=1) / turn_counts
 
         return self.classifier(self.dropout(pooled))
