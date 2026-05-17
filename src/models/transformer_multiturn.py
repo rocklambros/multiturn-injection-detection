@@ -66,28 +66,31 @@ class HierarchicalDistilBERT(nn.Module):
             Logits, shape (batch, 1).
         """
         batch_size, max_turns, seq_len = input_ids.shape
-        cls_tokens = []
+        bert_dim = self.bert.config.hidden_size
+        device = input_ids.device
+
+        cls_sequence = torch.zeros(batch_size, max_turns, bert_dim, device=device)
 
         ctx = torch.no_grad if self.freeze_bert else torch.enable_grad
         for t in range(max_turns):
-            turn_ids = input_ids[:, t, :]
-            turn_attn = attention_mask[:, t, :]
+            active = turn_mask[:, t].bool()
+            if not active.any():
+                continue
+            turn_ids = input_ids[active, t, :]
+            turn_attn = attention_mask[active, t, :]
 
             with ctx():
                 outputs = self.bert(input_ids=turn_ids, attention_mask=turn_attn)
 
-            cls_tokens.append(outputs.last_hidden_state[:, 0, :])
+            cls_sequence[active, t, :] = outputs.last_hidden_state[:, 0, :]
 
-        cls_sequence = torch.stack(cls_tokens, dim=1)  # (batch, max_turns, 768)
-
-        positions = torch.arange(max_turns, device=input_ids.device).unsqueeze(0).expand(batch_size, -1)
+        positions = torch.arange(max_turns, device=device).unsqueeze(0).expand(batch_size, -1)
         cls_sequence = cls_sequence + self.turn_position_embedding(positions)
 
         mask_expanded = turn_mask.unsqueeze(-1)
         cls_sequence = cls_sequence * mask_expanded
         cls_sequence = self.input_norm(cls_sequence)
 
-        # TransformerEncoder expects src_key_padding_mask: True = ignore
         padding_mask = (turn_mask == 0)
         cross_out = self.cross_turn_transformer(cls_sequence, src_key_padding_mask=padding_mask)
         cross_out = torch.nan_to_num(cross_out, nan=0.0, posinf=0.0, neginf=0.0)
