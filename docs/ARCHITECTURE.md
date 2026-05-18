@@ -10,13 +10,13 @@ The system uses a dual-encoder architecture that separates two classification pr
 
 ```mermaid
 flowchart TD
-    A["Raw Conversation\n(up to 10 turns)"] --> B["Turn Tokenization\n& Padding"]
-    B --> C["Frozen GRU Encoder\n(trained on 51,373 single-turn samples)"]
-    C --> D["Per-Turn Embeddings\n(32-dim × N turns)"]
-    D --> E["Trainable LSTM\n(64-dim hidden state)"]
-    E --> F["Additive Attention\nover LSTM States"]
+    A["Raw Conversation<br/>(up to 10 turns)"] --> B["Turn Tokenization<br/>& Padding"]
+    B --> C["Frozen GRU Encoder<br/>(trained on 51,373 single-turn samples)"]
+    C --> D["Per-Turn Embeddings<br/>(32-dim × N turns)"]
+    D --> E["Trainable LSTM<br/>(64-dim hidden state)"]
+    E --> F["Additive Attention<br/>over LSTM States"]
     F --> G["Weighted Context Vector"]
-    G --> H["Linear Classifier\n+ Sigmoid"]
+    G --> H["Linear Classifier<br/>+ Sigmoid"]
     H --> I["P(injection | conversation)"]
 ```
 
