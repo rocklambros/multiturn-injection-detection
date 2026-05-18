@@ -20,9 +20,10 @@ keywords:
   - lstm
   - attention
 abstract: >-
-  A dual-encoder deep learning system that detects prompt injection attacks
-  distributed across multiple conversation turns. A frozen GRU turn encoder
-  produces per-message representations, and a trainable LSTM sequence
-  classifier with attention reads the conversation-level pattern. Achieves
-  F1=0.995 on multi-turn detection, a +10 F1 point improvement over the
-  best single-turn approach.
+  A deep learning system that detects prompt injection attacks distributed
+  across multiple conversation turns. Compares a lightweight dual-encoder
+  architecture (frozen GRU turn encoder + trainable LSTM sequence classifier,
+  27K parameters, F1=0.837 on shared-prefix evaluation) against fully
+  fine-tuned DistilBERT (66.4M parameters, F1=0.992). Demonstrates that
+  temporal modeling significantly outperforms per-turn classification
+  (p < 0.001) and that turn order carries genuine discriminative signal.

@@ -57,7 +57,7 @@ A second neural network — an **LSTM** (Long Short-Term Memory) — reads the s
 Message 1 summary → [LSTM] → "seems normal..."
 Message 2 summary → [LSTM] → "still normal, but asking about security..."
 Message 3 summary → [LSTM] → "escalating — requesting specifics about access..."
-Message 4 summary → [LSTM] → "THIS IS AN ATTACK" (confidence: 99.5%)
+Message 4 summary → [LSTM] → "THIS IS AN ATTACK"
 ```
 
 The LSTM has **gates** — mathematical mechanisms that decide what to remember, what to forget, and when to raise the alarm. It learns that certain sequences of messages (persona establishment → information gathering → exploit) are attack patterns, even when no single message crosses the line.
@@ -68,37 +68,48 @@ An **attention mechanism** sits on top, highlighting which messages in the conve
 
 ## Key Results
 
-All iterations from baseline through final model:
+### Single-Turn Classification
 
-| Iteration | Model | Single-Turn F1 | Multi-Turn F1 |
-|-----------|-------|----------------|---------------|
-| 0 | TF-IDF + Logistic Regression | 0.814 | 0.656 |
-| 0 | TF-IDF + Random Forest | 0.834 | 0.739 |
-| 1 | LSTM | 0.814 | — |
-| 2 | LSTM + GloVe | 0.813 | — |
-| 3 | BiLSTM + Dropout | 0.815 | — |
-| 4 | GRU | 0.815 | 0.887 (per-turn) |
-| 4b | Custom Transformer | 0.808 | — |
-| 4c | DistilBERT (frozen) | 0.806 | — |
-| **5** | **Multi-turn LSTM** | — | **0.989** |
-| **6** | **+ Attention** | — | **0.992** |
-| **7** | **+ Threshold tuning** | — | **0.995** |
+The Chollet heuristic (ratio = 51,373 samples / 87.3 mean words = 588, below the 1,500 threshold) correctly predicts that bag-of-bigrams models outperform deep learning on single-turn data:
 
-> **Core finding:** The multi-turn architecture improves detection by **+10 F1 points** over the best per-message approach. In practical terms, that gap is the difference between missing 1 in 9 attacks and missing 1 in 200.
+| Model | Single-Turn F1 |
+|-------|:--------------:|
+| **TF-IDF + Random Forest** | **0.834** |
+| GRU | 0.815 |
+| BiLSTM + Dropout | 0.815 |
+| LSTM | 0.814 |
+| TF-IDF + Logistic Regression | 0.814 |
+| Custom Transformer | 0.808 |
+| DistilBERT (frozen) | 0.806 |
+
+### Multi-Turn Detection (v3 Shared-Prefix Evaluation)
+
+All multi-turn results below are on the v3 test set: 5,130 conversations across 4 difficulty tiers, with shared-prefix matched pairs that eliminate early-turn confounds. 95% bootstrap CIs from 1,000 resamples.
+
+| Model | F1 | 95% CI | Trainable Params |
+|-------|:--:|:------:|:----------------:|
+| **Concatenated DistilBERT** | **0.992** | [0.989, 0.994] | 66.4M |
+| Hierarchical DistilBERT | 0.976 | [0.971, 0.980] | 5.5M |
+| Temporal LSTM (iter 5) | 0.837 | [0.826, 0.847] | 27K |
+| LSTM + Attention (iter 6) | 0.837 | [0.825, 0.848] | 29K |
+| Shuffled turns | 0.760 | [0.748, 0.772] | 27K |
+| Cosine baseline | 0.612 | [0.596, 0.627] | 0 |
+
+> **Core finding:** Temporal modeling significantly outperforms per-turn classification — the temporal LSTM beats max-vote baselines by **+13 F1 points** (p < 0.001), and shuffling turns drops F1 by 7.7 points (p < 0.001), proving that turn order carries genuine signal. Concatenated DistilBERT achieves the highest absolute F1 (0.992) with 66.4M trainable parameters. The temporal LSTM reaches F1 = 0.837 with just 27K parameters — a 2,460x parameter advantage for deployment on resource-constrained devices where DistilBERT is impractical.
 
 ---
 
-## Transformer Comparison (What About Transformers?)
+## Transformer Comparison
 
-We also compared transformer architectures. Using the **Chollet heuristic** (Chollet, *Deep Learning with Python*), we predicted that transformers would underperform simpler models on our dataset — and they did. Our dataset ratio is 588, well below the 1,500 threshold where transformers become competitive:
+The Chollet heuristic correctly predicts that transformers underperform simpler models **on single-turn data** — our dataset ratio of 588 falls well below the 1,500 threshold:
 
+- TF-IDF + Random Forest: F1 = 0.834 (single-turn winner)
 - Custom Transformer: F1 = 0.808
-- DistilBERT (pretrained, frozen): F1 = 0.806
-- TF-IDF + Random Forest: F1 = 0.834 (winner)
+- DistilBERT (frozen): F1 = 0.806
 
-**Why?** Transformers need large amounts of training data to learn effectively. When the dataset-to-parameter ratio falls below ~1,500, simpler architectures with inductive biases (recurrence, n-gram features) outperform self-attention models. This is a practically important lesson: larger models are not always better — data quantity matters.
+The story reverses for multi-turn detection. With full fine-tuning on conversation-level data, concatenated DistilBERT achieves F1 = 0.992 — the best overall result. This makes sense: the Chollet heuristic applies to the single-turn setting where each sample is ~87 words. Multi-turn conversations are longer and structurally richer, giving transformers enough signal to work with.
 
-Full analysis, including the Chollet calculation and ablation results, is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Full analysis in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ---
 
@@ -142,30 +153,27 @@ flowchart TD
     CL --> SP
     SP --> ST_TR & ST_VA & ST_TE
 
-    subgraph "Synthetic Multi-Turn"
+    subgraph "Synthetic Multi-Turn (v1)"
         SY["src/data/synthetic.py\n4 attack strategies"]
-        MT_TR["data/synthetic/\nmultiturn_train.json\n(5,000 conversations)"]
-        MT_VA["data/synthetic/\nmultiturn_val.json\n(1,000 conversations)"]
-        MT_TE["data/synthetic/\nmultiturn_test.json\n(1,000 conversations)"]
+        MT_V1["data/synthetic/\n7,000 conversations\n(5K train / 1K val / 1K test)"]
     end
 
     ST_TR -->|"source text for\nfragmentation"| SY
-    SY --> MT_TR & MT_VA & MT_TE
+    SY --> MT_V1
 
-    subgraph "Extended Pipeline"
-        SPG["src/data/shared_prefix_generator.py\nControlled attack/benign pairs"]
+    subgraph "V3 Shared-Prefix Pipeline"
         SV2["src/data/synthetic_v2.py\nV2 with topic diversity"]
+        SPG["src/data/shared_prefix_generator.py\nMatched attack/benign pairs\n4 difficulty tiers"]
+        MT_V3["data/synthetic_v3/\n27,180 conversations\n(18.7K train / 3.3K val / 5.1K test)"]
     end
 
-    ST_TR --> SPG
-    ST_TR --> SV2
+    ST_TR --> SV2 --> SPG --> MT_V3
 
     subgraph "Validation"
-        CG["src/data/confound_gates.py\nData quality gates"]
+        CG["src/data/confound_gates.py\n7 confound gates"]
     end
 
-    SV2 --> CG
-    SPG --> CG
+    MT_V3 --> CG
 
     subgraph "Tokenization"
         TOK["src/utils/tokenizer.py\n20K vocab from training data"]
@@ -203,11 +211,16 @@ flowchart TD
         CHO["Chollet Heuristic:\nratio=588 < 1500\nBag-of-bigrams wins"]
     end
 
-    subgraph "Phase C: Multi-Turn (Iter 5-7)"
+    subgraph "Phase C: Multi-Turn RNNs (Iter 5-6)"
         MT["src/models/run_multi_turn.py"]
-        M5["Iter 5: Multi-turn LSTM\nF1=0.989"]
-        M6["Iter 6: + Attention\nF1=0.992"]
-        M7["Iter 7: + Threshold\nF1=0.995"]
+        M5["Iter 5: Temporal LSTM\nv3 F1=0.837"]
+        M6["Iter 6: + Attention\nv3 F1=0.837"]
+    end
+
+    subgraph "Phase C2: Multi-Turn Transformers"
+        DBT["src/models/concat_distilbert.py"]
+        DBC["DistilBERT Concat\nv3 F1=0.992"]
+        DBH["DistilBERT Hierarchical\nv3 F1=0.976"]
     end
 
     BASE --> R0
@@ -216,7 +229,9 @@ flowchart TD
     TF --> M4B & M4C --> CHO
 
     DEC -->|"Frozen GRU\nweights"| MT
-    MT --> M5 --> M6 --> M7
+    MT --> M5 --> M6
+    DEC --> DBT
+    DBT --> DBC & DBH
 
     subgraph "Phase D: Ablation Studies"
         ABL["src/models/ablations.py\n7 ablation variants"]
@@ -224,24 +239,25 @@ flowchart TD
 
     subgraph "Evaluation Extended"
         BS["src/evaluation/bootstrap.py\nBootstrap confidence intervals"]
-        PT["src/evaluation/per_tier.py\nPer-difficulty-tier evaluation"]
-        NC["scripts/run_null_calibration.py\nNull calibration gates"]
+        PT["src/evaluation/per_tier.py\n4 difficulty tiers"]
+        NC["scripts/run_null_calibration.py\nConfound gates"]
     end
 
-    M7 --> ABL
-    M7 --> BS
-    M7 --> PT
-    M7 --> NC
+    M6 --> ABL
+    DBC --> BS
+    DBC --> PT
+    M6 --> BS
+    M6 --> NC
 
     subgraph "Evaluation"
         EV["src/evaluation/\nmetrics.py\nanalysis.py\nvisualization.py"]
         RES["results/\nmetrics.json\nconfusion_matrix.png\ntraining_curves.png\nattention_heatmap.png"]
     end
 
-    M7 --> EV --> RES
+    DBC --> EV --> RES
 
     style DEC fill:#4CAF50,color:#fff
-    style M7 fill:#FF9800,color:#fff
+    style DBC fill:#FF9800,color:#fff
     style CHO fill:#E91E63,color:#fff
 ```
 
@@ -272,7 +288,7 @@ flowchart LR
         HEAD["Classification Head\nDense(64→32→1)"]
     end
 
-    OUTPUT["Attack: 99.5%"]
+    OUTPUT["Attack / Benign"]
 
     T1 --> GRU1 --> V1
     T2 --> GRU1 --> V2
@@ -436,8 +452,8 @@ Pre-processed data and trained model weights are available on HuggingFace Hub (g
 
 | Artifact | Link | Contents |
 |----------|------|----------|
-| **Dataset** | [rockCO78/multiturn-injection-detection](https://huggingface.co/datasets/rockCO78/multiturn-injection-detection) | Processed single-turn CSVs (73K samples), synthetic multi-turn JSONs (7K conversations), vocabulary |
-| **Model** | [rockCO78/multiturn-injection-detector](https://huggingface.co/rockCO78/multiturn-injection-detector) | Trained GRU encoder, multi-turn LSTM+attention weights, ablation model variants |
+| **Dataset** | [rockCO78/multiturn-injection-detection](https://huggingface.co/datasets/rockCO78/multiturn-injection-detection) | Processed single-turn CSVs (73K samples), v3 shared-prefix multi-turn conversations (27K), vocabulary |
+| **Model** | [rockCO78/multiturn-injection-detector](https://huggingface.co/rockCO78/multiturn-injection-detector) | Trained GRU encoder, multi-turn LSTM+attention, DistilBERT concat/hierarchical, ablation variants |
 
 See [Installation Guide](docs/INSTALLATION.md#using-published-huggingface-artifacts) for download instructions.
 
@@ -458,7 +474,9 @@ Eight HuggingFace datasets merged and cleaned (73,390 total samples):
 | [TrustAIRLab/in-the-wild-jailbreak-prompts](https://huggingface.co/datasets/TrustAIRLab/in-the-wild-jailbreak-prompts) (regular) | 13,735 | ODC-BY |
 | [jackhhao/jailbreak-classification](https://huggingface.co/datasets/jackhhao/jailbreak-classification) | 1,306 | MIT |
 
-All source datasets are publicly accessible without authentication. In addition to the single-turn data, the project includes 7,000 synthetic multi-turn conversations generated using four attack strategies drawn from published research: fragment distribution (40%), gradual escalation (30%), context priming (20%), and instruction layering (10%).
+All source datasets are publicly accessible without authentication.
+
+The project also includes **27,180 synthetic multi-turn conversations** (the v3 shared-prefix dataset) organized into 4 difficulty tiers (easy, medium, hard, adversarial). Each conversation pair shares identical opening turns, forcing the model to discriminate based on how the conversation diverges — not surface-level vocabulary cues. Attack strategies: fragment distribution (~45%), gradual escalation (~25%), context priming (~15%), and instruction layering (~15%).
 
 ---
 
@@ -466,7 +484,7 @@ All source datasets are publicly accessible without authentication. In addition 
 
 The primary development target is an **NVIDIA Jetson Orin AGX** (64GB RAM, 2048-core Ampere GPU, CUDA 12.6). Extended evaluation runs were conducted on RunPod RTX 4090 instances. Total notebook execution time is under 30 minutes on GPU.
 
-All models are small enough to train on consumer hardware — the largest (DistilBERT) has 66M parameters with only 99K trainable; the multi-turn LSTM has just 27K trainable parameters.
+Most models train on consumer hardware. The lightweight temporal LSTM has just 27K trainable parameters. The top-performing concatenated DistilBERT is fully fine-tuned (66.4M trainable parameters) and benefits from GPU acceleration; the hierarchical DistilBERT variant has 5.5M trainable parameters.
 
 ---
 
