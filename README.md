@@ -1,6 +1,11 @@
 # Multi-Turn Distributed Prompt Injection Detection
 
-**A deep learning project that detects prompt injection attacks hidden across multiple conversation turns — where no single message looks malicious on its own.**
+[![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC_BY--NC_4.0-lightgrey.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://python.org)
+[![Dataset on HF](https://img.shields.io/badge/HuggingFace-Dataset-yellow.svg)](https://huggingface.co/datasets/rockCO78/multiturn-injection-detection)
+[![Model on HF](https://img.shields.io/badge/HuggingFace-Model-yellow.svg)](https://huggingface.co/rockCO78/multiturn-injection-detector)
+
+**A deep learning system that detects prompt injection attacks hidden across multiple conversation turns — where no single message looks malicious on its own.**
 
 ---
 
@@ -46,7 +51,7 @@ This GRU was first trained on 73,000+ labeled examples of benign messages and kn
 
 ### Step 2: Watch the Conversation Unfold
 
-A second neural network — an **LSTM** (Long Short-Term Memory) — reads the sequence of message summaries from Step 1. This is where the magic happens:
+A second neural network — an **LSTM** (Long Short-Term Memory) — reads the sequence of message summaries from Step 1. This is where the core detection happens:
 
 ```
 Message 1 summary → [LSTM] → "seems normal..."
@@ -63,32 +68,43 @@ An **attention mechanism** sits on top, highlighting which messages in the conve
 
 ## Key Results
 
-| Approach | F1 Score | What it means |
-|----------|----------|---------------|
-| TF-IDF + Random Forest (classical ML) | 0.834 | Best single-message detector |
-| GRU per-turn (check each message independently) | 0.887 | Deep learning, but still one-at-a-time |
-| **Multi-turn LSTM (this project)** | **0.989** | Watches the full conversation |
-| **+ Attention + threshold tuning** | **0.995** | Our best model |
+All iterations from baseline through final model:
 
-The multi-turn architecture improves detection by **+10 F1 points** over the best per-message approach. That's the difference between missing 1 in 9 attacks and missing 1 in 200.
+| Iteration | Model | Single-Turn F1 | Multi-Turn F1 |
+|-----------|-------|----------------|---------------|
+| 0 | TF-IDF + Logistic Regression | 0.814 | 0.656 |
+| 0 | TF-IDF + Random Forest | 0.834 | 0.739 |
+| 1 | LSTM | 0.814 | — |
+| 2 | LSTM + GloVe | 0.813 | — |
+| 3 | BiLSTM + Dropout | 0.815 | — |
+| 4 | GRU | 0.815 | 0.887 (per-turn) |
+| 4b | Custom Transformer | 0.808 | — |
+| 4c | DistilBERT (frozen) | 0.806 | — |
+| **5** | **Multi-turn LSTM** | — | **0.989** |
+| **6** | **+ Attention** | — | **0.992** |
+| **7** | **+ Threshold tuning** | — | **0.995** |
 
-### What About Transformers?
-
-We also compared transformer architectures. Using the **Chollet heuristic** (Chollet, *Deep Learning with Python*), we predicted that transformers would underperform simpler models on our dataset — and they did:
-
-- Custom Transformer: F1 = 0.808
-- DistilBERT (pretrained): F1 = 0.806
-- TF-IDF + Random Forest: F1 = 0.834 (winner)
-
-**Why?** Transformers need enormous amounts of training data to learn effectively. Our dataset ratio (588) is well below the threshold (1,500) where transformers become competitive. This is an important lesson: **bigger models aren't always better — data quantity matters.**
+> **Core finding:** The multi-turn architecture improves detection by **+10 F1 points** over the best per-message approach. In practical terms, that gap is the difference between missing 1 in 9 attacks and missing 1 in 200.
 
 ---
 
-## How Everything Connects
+## Transformer Comparison (What About Transformers?)
+
+We also compared transformer architectures. Using the **Chollet heuristic** (Chollet, *Deep Learning with Python*), we predicted that transformers would underperform simpler models on our dataset — and they did. Our dataset ratio is 588, well below the 1,500 threshold where transformers become competitive:
+
+- Custom Transformer: F1 = 0.808
+- DistilBERT (pretrained, frozen): F1 = 0.806
+- TF-IDF + Random Forest: F1 = 0.834 (winner)
+
+**Why?** Transformers need large amounts of training data to learn effectively. When the dataset-to-parameter ratio falls below ~1,500, simpler architectures with inductive biases (recurrence, n-gram features) outperform self-attention models. This is a practically important lesson: larger models are not always better — data quantity matters.
+
+Full analysis, including the Chollet calculation and ablation results, is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+---
+
+## Architecture Diagrams
 
 ### Data Pipeline
-
-This diagram shows how raw datasets flow through the system to become training-ready data:
 
 ```mermaid
 flowchart TD
@@ -136,6 +152,21 @@ flowchart TD
     ST_TR -->|"source text for\nfragmentation"| SY
     SY --> MT_TR & MT_VA & MT_TE
 
+    subgraph "Extended Pipeline"
+        SPG["src/data/shared_prefix_generator.py\nControlled attack/benign pairs"]
+        SV2["src/data/synthetic_v2.py\nV2 with topic diversity"]
+    end
+
+    ST_TR --> SPG
+    ST_TR --> SV2
+
+    subgraph "Validation"
+        CG["src/data/confound_gates.py\nData quality gates"]
+    end
+
+    SV2 --> CG
+    SPG --> CG
+
     subgraph "Tokenization"
         TOK["src/utils/tokenizer.py\n20K vocab from training data"]
         VOC["models/vocab.json"]
@@ -148,8 +179,6 @@ flowchart TD
 ```
 
 ### Model Training Pipeline
-
-This diagram shows how models are trained in sequence, each building on the previous:
 
 ```mermaid
 flowchart TD
@@ -188,6 +217,21 @@ flowchart TD
 
     DEC -->|"Frozen GRU\nweights"| MT
     MT --> M5 --> M6 --> M7
+
+    subgraph "Phase D: Ablation Studies"
+        ABL["src/models/ablations.py\n7 ablation variants"]
+    end
+
+    subgraph "Evaluation Extended"
+        BS["src/evaluation/bootstrap.py\nBootstrap confidence intervals"]
+        PT["src/evaluation/per_tier.py\nPer-difficulty-tier evaluation"]
+        NC["scripts/run_null_calibration.py\nNull calibration gates"]
+    end
+
+    M7 --> ABL
+    M7 --> BS
+    M7 --> PT
+    M7 --> NC
 
     subgraph "Evaluation"
         EV["src/evaluation/\nmetrics.py\nanalysis.py\nvisualization.py"]
@@ -245,8 +289,6 @@ flowchart LR
 
 ### Deliverables Flow
 
-How the code, results, and reports connect:
-
 ```mermaid
 flowchart TD
     subgraph "Source Code"
@@ -264,8 +306,10 @@ flowchart TD
     end
 
     subgraph "Deliverables"
-        RPT["report/final_report.md\nAcademic report"]
+        RPT["report/final_report.tex\nLaTeX source"]
+        PDF["report/final_report.pdf\nCompiled report"]
         PRES["report/presentation.md\n10-minute deck"]
+        GAMMA["report/gamma_prompt.md\nGamma presentation"]
         HTML["notebooks/multiturn_injection_detection.html\nStatic notebook export"]
     end
 
@@ -276,7 +320,9 @@ flowchart TD
     MOD --> NB
     NB --> HTML
     RES --> RPT
+    RPT --> PDF
     RES --> PRES
+    PRES --> GAMMA
 
     style NB fill:#4CAF50,color:#fff
     style RES fill:#FF9800,color:#fff
@@ -289,81 +335,111 @@ flowchart TD
 ```
 multiturn-injection-detection/
 ├── notebooks/
-│   └── multiturn_injection_detection.ipynb     # Complete walkthrough with all results and 24 visualizations
+│   └── multiturn_injection_detection.ipynb    # Full walkthrough: all iterations, 24+ visualizations
 ├── src/
 │   ├── data/
-│   │   ├── download.py          # Downloads base HuggingFace datasets
-│   │   ├── download_extra.py    # Downloads 5 additional datasets (73K total)
-│   │   ├── clean.py             # 9-step cleaning pipeline (dedup, normalize, filter)
-│   │   ├── synthetic.py         # Generates 7K multi-turn attack conversations
-│   │   └── loader.py            # PyTorch DataLoaders for training
+│   │   ├── download.py                # Base HuggingFace datasets (3 sources)
+│   │   ├── download_extra.py          # Additional datasets (5 sources, 73K total)
+│   │   ├── download_glove.py          # GloVe embeddings (optional, iter 2)
+│   │   ├── clean.py                   # 9-step cleaning pipeline
+│   │   ├── synthetic.py               # Multi-turn conversation generator (4 strategies)
+│   │   ├── synthetic_v2.py            # V2 generation with topic diversity
+│   │   ├── shared_prefix_generator.py # Controlled attack/benign pairs
+│   │   ├── loader.py                  # PyTorch DataLoaders
+│   │   ├── batch_generator.py         # Batch construction utilities
+│   │   ├── confound_gates.py          # Data quality validation gates
+│   │   ├── intent_extractor.py        # Turn-level intent classification
+│   │   ├── manifest.py                # Dataset manifest tracking
+│   │   ├── partitioner.py             # Train/val/test splitting
+│   │   ├── response_stripper.py       # Assistant response removal
+│   │   ├── topic_pool.py              # Topic diversity for generation
+│   │   └── validation_gate.py         # Pre-training data validation
 │   ├── models/
-│   │   ├── single_turn.py       # LSTM/GRU/BiLSTM architectures
-│   │   ├── transformer.py       # Custom Transformer + DistilBERT classifiers
-│   │   ├── multi_turn.py        # Dual-encoder multi-turn classifier
-│   │   ├── attention.py         # Additive attention mechanism
-│   │   ├── baselines.py         # TF-IDF + LR/RF baselines
-│   │   ├── run_single_turn.py   # Training orchestration (iterations 1-4)
-│   │   ├── run_transformers.py  # Transformer training + Chollet analysis
-│   │   └── run_multi_turn.py    # Multi-turn training (iterations 5-7)
+│   │   ├── single_turn.py             # LSTM/GRU/BiLSTM architectures
+│   │   ├── transformer.py             # Custom Transformer classifier
+│   │   ├── multi_turn.py              # Dual-encoder multi-turn classifier
+│   │   ├── attention.py               # Additive attention mechanism
+│   │   ├── baselines.py               # TF-IDF + LR/RF baselines
+│   │   ├── ablations.py               # 7 ablation variants
+│   │   ├── concat_distilbert.py       # DistilBERT concatenation baseline
+│   │   ├── transformer_multiturn.py   # Transformer multi-turn variant
+│   │   ├── run_single_turn.py         # Iterations 1-4 training
+│   │   ├── run_transformers.py        # Iterations 4b-4c + Chollet analysis
+│   │   └── run_multi_turn.py          # Iterations 5-7 training
 │   ├── evaluation/
-│   │   ├── metrics.py           # F1, precision, recall, ROC-AUC computation
-│   │   ├── analysis.py          # Error analysis, confusion matrices, attention heatmaps
-│   │   └── visualization.py     # Training curves, threshold plots
-│   ├── training/                # Training loop with early stopping
+│   │   ├── metrics.py                 # F1, precision, recall, ROC-AUC
+│   │   ├── analysis.py                # Error analysis, confusion matrices
+│   │   ├── visualization.py           # Training curves, threshold plots
+│   │   ├── bootstrap.py               # Bootstrap confidence intervals
+│   │   └── per_tier.py                # Per-difficulty-tier evaluation
+│   ├── training/
+│   │   └── train.py                   # Training loop with early stopping
 │   └── utils/
-│       ├── seed.py              # Reproducibility (fixes all random seeds to 42)
-│       ├── tokenizer.py         # Custom 20K-token vocabulary builder
-│       └── config.py            # Hyperparameters and paths
+│       ├── seed.py                    # Global seed (42) for reproducibility
+│       ├── tokenizer.py               # 20K-token vocabulary builder
+│       └── config.py                  # All hyperparameters and paths
+├── scripts/
+│   ├── generate_data.py               # End-to-end data generation
+│   ├── generate_v3_data.py            # V3 shared-prefix data
+│   ├── run_training.py                # Full training pipeline
+│   ├── run_ablations.py               # Ablation study runner
+│   ├── run_evaluation.py              # Evaluation pipeline
+│   ├── run_extended_evaluation.py     # Extended eval with bootstrap
+│   ├── run_null_calibration.py        # Null calibration gates
+│   ├── run_trivial_baselines.py       # Trivial baseline comparisons
+│   ├── generate_embedding_tsne.py     # t-SNE embedding visualization
+│   ├── generate_gate_activations.py   # GRU gate activation analysis
+│   ├── generate_loss_landscape.py     # Loss landscape visualization
+│   ├── add_viz_cells.py               # Notebook visualization cells
+│   ├── patch_notebook_adversarial.py  # Notebook adversarial patches
+│   ├── update_notebook_v3.py          # V3 notebook updates
+│   ├── update_notebook_v3_part2.py    # V3 notebook updates (cont.)
+│   ├── regenerate_clean.py            # Re-run cleaning pipeline
+│   ├── collect_runpod_results.py      # Collect RunPod GPU results
+│   ├── upload_wandb_artifact.py       # WandB artifact upload
+│   ├── provision_runpod.py            # RunPod instance setup
+│   ├── bootstrap_runpod.sh            # RunPod bootstrap script
+│   └── runpod_orchestrate.sh          # RunPod job orchestration
+├── tests/
+│   ├── conftest.py                    # Pytest fixtures
+│   ├── test_e2e_pipeline.py           # End-to-end pipeline test
+│   ├── test_fragment_engine.py        # Fragment distribution test
+│   ├── test_partition.py              # Data partitioning test
+│   ├── test_validation_gate.py        # Validation gate test
+│   ├── test_bce_migration.py          # BCE loss migration test
+│   └── test_mask_fix.py               # Attention mask test
 ├── data/
-│   ├── processed/               # Cleaned single-turn CSVs (train/val/test)
-│   └── synthetic/               # Generated multi-turn conversations (JSON)
-├── models/                      # Saved model weights (.pt files)
-├── results/                     # Metrics (JSON), plots (PNG) for every iteration
+│   ├── processed/                     # Cleaned single-turn CSVs
+│   └── synthetic/                     # Generated multi-turn JSONs
+├── models/                            # Saved weights (.pt) + vocab.json
+├── results/                           # Metrics (JSON) + plots (PNG)
 ├── report/
-│   ├── final_report.md          # Full academic report
-│   └── presentation.md          # 10-minute presentation slides
-└── prompts/                     # Execution prompts for reproducible builds
+│   ├── final_report.tex               # LaTeX source
+│   ├── final_report.pdf               # Compiled report
+│   ├── final_report.md                # Markdown version
+│   ├── presentation.md                # Slide content
+│   └── gamma_prompt.md                # Gamma presentation prompt
+├── docs/
+│   ├── ARCHITECTURE.md                # Architecture decisions
+│   └── INSTALLATION.md                # Setup guide
+├── CONTRIBUTING.md                    # Contribution guidelines
+├── CITATION.cff                       # Machine-readable citation
+├── LICENSE                            # CC BY-NC 4.0
+└── requirements.txt                   # Python dependencies
 ```
 
 ---
 
-## Iteration Roadmap
+## Published Artifacts
 
-The project follows a progressive iteration plan — each step builds on the last:
+Pre-processed data and trained model weights are available on HuggingFace Hub (gated access — request approval on each page):
 
-| Iteration | Model | Purpose | Single-Turn F1 | Multi-Turn F1 |
-|-----------|-------|---------|----------------|---------------|
-| 0 | TF-IDF + LR/RF | Establish classical ML baselines | 0.814 / 0.834 | 0.656 / 0.739 |
-| 1 | Simple LSTM | First deep learning model | 0.814 | — |
-| 2 | LSTM + GloVe | Test pretrained embeddings | 0.813 | — |
-| 3 | BiLSTM + Dropout | Bidirectional + regularization | 0.815 | — |
-| 4 | GRU | Fewer params, competitive F1 → **chosen as turn encoder** | 0.815 | 0.887 (per-turn) |
-| 4b | Custom Transformer | Controlled attention vs recurrence comparison | 0.808 | — |
-| 4c | DistilBERT (frozen) | Pretrained language model transfer | 0.806 | — |
-| 5 | **Multi-turn LSTM** | **Novel: temporal detection across turns** | — | **0.989** |
-| 6 | + Attention | Interpretability: which turns matter? | — | **0.992** |
-| 7 | + Threshold tuning | Optimize for security use case | — | **0.995** |
+| Artifact | Link | Contents |
+|----------|------|----------|
+| **Dataset** | [rockCO78/multiturn-injection-detection](https://huggingface.co/datasets/rockCO78/multiturn-injection-detection) | Processed single-turn CSVs (73K samples), synthetic multi-turn JSONs (7K conversations), vocabulary |
+| **Model** | [rockCO78/multiturn-injection-detector](https://huggingface.co/rockCO78/multiturn-injection-detector) | Trained GRU encoder, multi-turn LSTM+attention weights, ablation model variants |
 
----
-
-## Concepts You'll Learn From This Project
-
-If you're interested in deep learning and NLP, this project covers:
-
-- **Text classification** — turning words into numbers and training models to make predictions
-- **Word embeddings** — learned vs pretrained (GloVe), and when each works better
-- **LSTM and GRU** — recurrent neural networks with gating mechanisms for sequential data
-- **Bidirectional models** — reading text forwards and backwards simultaneously
-- **Transformers** — self-attention architectures and why they need lots of data
-- **Transfer learning** — using pretrained models (DistilBERT) for domain-specific tasks
-- **The Chollet heuristic** — a practical rule for choosing between model families based on dataset size
-- **Attention mechanisms** — learning which inputs matter most for a prediction
-- **Threshold tuning** — adjusting decision boundaries for asymmetric error costs
-- **Dual-encoder architectures** — freezing one model and stacking another on top
-- **Synthetic data generation** — creating training data when none exists
-
-The [Jupyter notebook](notebooks/multiturn_injection_detection.ipynb) walks through every concept with detailed explanations, 24 visualizations, and inline commentary on every code cell.
+See [Installation Guide](docs/INSTALLATION.md#using-published-huggingface-artifacts) for download instructions.
 
 ---
 
@@ -382,33 +458,48 @@ Eight HuggingFace datasets merged and cleaned (73,390 total samples):
 | [TrustAIRLab/in-the-wild-jailbreak-prompts](https://huggingface.co/datasets/TrustAIRLab/in-the-wild-jailbreak-prompts) (regular) | 13,735 | ODC-BY |
 | [jackhhao/jailbreak-classification](https://huggingface.co/datasets/jackhhao/jailbreak-classification) | 1,306 | MIT |
 
-Plus 7,000 synthetic multi-turn conversations generated using four attack strategies based on published research.
+All source datasets are publicly accessible without authentication. In addition to the single-turn data, the project includes 7,000 synthetic multi-turn conversations generated using four attack strategies drawn from published research: fragment distribution (40%), gradual escalation (30%), context priming (20%), and instruction layering (10%).
 
 ---
 
 ## Hardware
 
-Built and tested on an **NVIDIA Jetson Orin AGX** (64GB RAM, 2048-core Ampere GPU, CUDA 12.6). Total notebook execution time: under 30 minutes.
+The primary development target is an **NVIDIA Jetson Orin AGX** (64GB RAM, 2048-core Ampere GPU, CUDA 12.6). Extended evaluation runs were conducted on RunPod RTX 4090 instances. Total notebook execution time is under 30 minutes on GPU.
 
 All models are small enough to train on consumer hardware — the largest (DistilBERT) has 66M parameters with only 99K trainable; the multi-turn LSTM has just 27K trainable parameters.
 
 ---
 
-## Reproducibility
+## Documentation
 
-Every random operation uses seed 42 (Python, NumPy, PyTorch, cuDNN deterministic mode). All training data comes from public HuggingFace datasets. Model weights, metrics, and plots are saved to `models/` and `results/`.
+- **[Installation Guide](docs/INSTALLATION.md)** — Environment setup, data download, troubleshooting
+- **[Architecture Decisions](docs/ARCHITECTURE.md)** — Encoder selection, Chollet analysis, ablation findings, confound gates
+- **[Contributing](CONTRIBUTING.md)** — Code standards, testing, pull request process
+- **[Dataset on HuggingFace](https://huggingface.co/datasets/rockCO78/multiturn-injection-detection)** — Pre-processed data (gated)
+- **[Model on HuggingFace](https://huggingface.co/rockCO78/multiturn-injection-detector)** — Trained weights (gated)
 
-```bash
-# Install dependencies
-pip install -r requirements.txt
+---
 
-# Download datasets
-python -m src.data.download
-python -m src.data.download_extra
+## Citation
 
-# Run the full pipeline (or open the notebook)
-jupyter notebook notebooks/multiturn_injection_detection.ipynb
+If you use this work, please cite:
+
+> Lambros, R. (2026). *Multi-Turn Distributed Prompt Injection Detection.* GitHub. https://github.com/rocklambros/multiturn-injection-detection
+
+```bibtex
+@software{lambros2026multiturn,
+  author = {Lambros, Rock},
+  title = {Multi-Turn Distributed Prompt Injection Detection},
+  year = {2026},
+  url = {https://github.com/rocklambros/multiturn-injection-detection}
+}
 ```
+
+---
+
+## License
+
+This project is licensed under [CC BY-NC 4.0](LICENSE) — free for non-commercial use with attribution.
 
 ---
 
@@ -422,4 +513,4 @@ jupyter notebook notebooks/multiturn_injection_detection.ipynb
 
 ---
 
-**Author:** Rock Lambros | April 2026
+**Author:** Rock Lambros | May 2026
