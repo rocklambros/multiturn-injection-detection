@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+title: "Multi-Turn Distributed Prompt Injection Detection"
+message: "If you use this software, please cite it as below."
+type: software
+authors:
+  - family-names: Lambros
+    given-names: Rock
+    email: rock@rockcyber.com
+date-released: "2026-05-17"
+url: "https://github.com/rocklambros/multiturn-injection-detection"
+repository-code: "https://github.com/rocklambros/multiturn-injection-detection"
+license: CC-BY-NC-4.0
+keywords:
+  - prompt-injection
+  - multi-turn
+  - deep-learning
+  - nlp
+  - security
+  - gru
+  - lstm
+  - attention
+abstract: >-
+  A dual-encoder deep learning system that detects prompt injection attacks
+  distributed across multiple conversation turns. A frozen GRU turn encoder
+  produces per-message representations, and a trainable LSTM sequence
+  classifier with attention reads the conversation-level pattern. Achieves
+  F1=0.995 on multi-turn detection, a +10 F1 point improvement over the
+  best single-turn approach.
