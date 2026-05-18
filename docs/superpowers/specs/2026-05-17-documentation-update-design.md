@@ -57,19 +57,25 @@
 
 8. **Iteration Roadmap** — Keep the existing table format. All F1 values verified against metrics.json.
 
-9. **Datasets** — Keep the existing 8-dataset table. Add a line about 7,000 synthetic multi-turn conversations with four attack strategies (fragment distribution 40%, gradual escalation 30%, context priming 20%, instruction layering 10%).
+9. **Published Artifacts** — New section documenting gated HuggingFace Hub releases:
+   - **Dataset:** [rockCO78/multiturn-injection-detection](https://huggingface.co/datasets/rockCO78/multiturn-injection-detection) — processed single-turn CSVs + synthetic multi-turn JSONs. Gated access.
+   - **Model:** [rockCO78/multiturn-injection-detector](https://huggingface.co/rockCO78/multiturn-injection-detector) — trained model weights (GRU encoder, multi-turn LSTM+attention). Gated access.
+   - Note that these are gated artifacts requiring HuggingFace approval to access.
+   - Brief explanation of what's included in each artifact.
 
-10. **Hardware** — Keep Jetson Orin AGX note. Add mention of RunPod RTX 4090 for extended evaluation. Execution time <30 minutes.
+10. **Datasets** — Keep the existing 8-dataset table. Add a column or note indicating which source datasets require authentication or are gated on HuggingFace. Add a line about 7,000 synthetic multi-turn conversations with four attack strategies (fragment distribution 40%, gradual escalation 30%, context priming 20%, instruction layering 10%).
 
-11. **Quick Links** — Bullet list linking to docs/ARCHITECTURE.md, docs/INSTALLATION.md, CONTRIBUTING.md.
+11. **Hardware** — Keep Jetson Orin AGX note. Add mention of RunPod RTX 4090 for extended evaluation. Execution time <30 minutes.
 
-12. **Citation** — BibTeX block + plain text citation. Point to CITATION.cff.
+12. **Quick Links** — Bullet list linking to docs/ARCHITECTURE.md, docs/INSTALLATION.md, CONTRIBUTING.md, and the HuggingFace artifact pages.
 
-13. **License** — CC BY-NC 4.0 one-liner with link to LICENSE file.
+13. **Citation** — BibTeX block + plain text citation. Point to CITATION.cff.
 
-14. **References** — Keep existing 5 references unchanged.
+14. **License** — CC BY-NC 4.0 one-liner with link to LICENSE file.
 
-15. **Author** — "Rock Lambros | May 2026"
+15. **References** — Keep existing 5 references unchanged.
+
+16. **Author** — "Rock Lambros | May 2026"
 
 ### Sections removed from README (moved elsewhere)
 - Detailed "Reproducibility" setup instructions -> docs/INSTALLATION.md
@@ -170,20 +176,26 @@
    - GloVe embeddings download (optional, for iter2)
    - Verify CUDA availability
 
-4. **Hardware Notes**
+4. **Using Published HuggingFace Artifacts (alternative to local generation)**
+   - Dataset: [rockCO78/multiturn-injection-detection](https://huggingface.co/datasets/rockCO78/multiturn-injection-detection) — download pre-processed data instead of running the pipeline
+   - Model: [rockCO78/multiturn-injection-detector](https://huggingface.co/rockCO78/multiturn-injection-detector) — download trained weights instead of retraining
+   - Both are gated: explain how to request access and authenticate (`huggingface-cli login`)
+   - Note which source datasets also require gated access or authentication on HuggingFace
+
+5. **Hardware Notes**
    - Primary: NVIDIA Jetson Orin AGX (64GB RAM, 2048-core Ampere GPU, CUDA 12.6)
    - Also tested: RunPod RTX 4090 (for extended evaluation runs)
    - CPU fallback: works but training takes ~3x longer
    - Batch sizes: 64 single-turn, 32 multi-turn
    - No model exceeds 50M parameters (largest: DistilBERT at 66M with 99K trainable)
 
-5. **Reproducing Results**
+6. **Reproducing Results**
    - All random operations seeded with 42 (Python, NumPy, PyTorch, cuDNN deterministic)
    - Expected notebook execution: <30 minutes on GPU, <90 minutes on CPU
    - All training data from public HuggingFace datasets
    - Model weights and metrics saved to models/ and results/
 
-6. **Troubleshooting**
+7. **Troubleshooting**
    - CUDA version mismatch: check torch.cuda.is_available() and nvidia-smi
    - HuggingFace download failures: retry with HF_HUB_ENABLE_HF_TRANSFER=0
    - Memory issues: reduce batch size in src/utils/config.py
