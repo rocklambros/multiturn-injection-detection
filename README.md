@@ -183,7 +183,7 @@ flowchart TD
     ST_TR --> TOK --> VOC
 
     style ST_TR fill:#4CAF50,color:#fff
-    style MT_TR fill:#FF9800,color:#fff
+    style MT_V3 fill:#FF9800,color:#fff
 ```
 
 ### Model Training Pipeline

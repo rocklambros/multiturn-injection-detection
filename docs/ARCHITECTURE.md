@@ -154,7 +154,7 @@ Before trusting the multi-turn model's performance numbers, seven confound gates
 | Unigram BoW | 0.938 | < 0.60 | FAIL | Vocabulary confound |
 | Bigram BoW | 0.945 | < 0.65 | FAIL | Vocabulary confound |
 | Last-turn only | 0.963 | < 0.65 | FAIL | Last-turn leakage |
-| Mean-vote BoW | 0.926 | < 0.70 | FAIL | Vocabulary confound |
+| Mean-vote BoW | 0.926 | < 0.65 | FAIL | Vocabulary confound |
 
 The shared-prefix design successfully eliminates early-turn and length confounds (first-turn F1 = 0.354, length F1 = 0.482 — both near chance). Vocabulary differences persist in post-branch turns: both attack and benign continuations use different vocabulary to complete coherent narratives after the shared prefix diverges. The 7.7-point F1 drop when turns are shuffled (0.837 → 0.760, p < 0.001) confirms that temporal signal operates on top of this residual vocabulary confound.
 
