@@ -249,7 +249,7 @@ Seven gates run on 5-fold cross-validation of training data:
 | Unigram BoW | 0.938 | < 0.60 | FAIL |
 | Bigram BoW | 0.945 | < 0.65 | FAIL |
 | Last-turn only | 0.963 | < 0.65 | FAIL |
-| Mean-vote BoW | 0.926 | < 0.70 | FAIL |
+| Mean-vote BoW | 0.926 | < 0.65 | FAIL |
 
 The passing gates confirm the shared-prefix design eliminates early-turn and length confounds. The failing gates indicate that vocabulary differences persist in post-branch turns. The turn-order sensitivity analysis (55% flip rate) demonstrates that the temporal LSTM relies on ordering information that BoW classifiers cannot exploit.
 
