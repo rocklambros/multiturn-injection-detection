@@ -18,11 +18,11 @@
 
 **Subtitle:** What LSTMs Can Teach Us About Attacks That Hide in Plain Sight
 
-**Author:** Rock Lambros
+**Author:** Kyriakos "Rock" Lambros
 
-**Date:** May 2026
+**Date:** Spring 2026
 
-**Affiliation:** University of Denver, COMP 4531
+**Affiliation:** University of Denver, COMP 4531: Deep Learning
 
 [IMAGE PLACEHOLDER: University or cybersecurity-themed background]
 
@@ -218,7 +218,7 @@ The DistilBERT baselines raise an honest question: why not just use the bigger m
 
 **Multi-Turn Distributed Prompt Injection Detection**
 
-Rock Lambros | University of Denver | COMP 4531
+Kyriakos "Rock" Lambros | University of Denver | COMP 4531: Deep Learning
 
 **Code, data, and models are publicly available:**
 - GitHub: github.com/rocklambros/multiturn-injection-detection
