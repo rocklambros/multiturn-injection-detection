@@ -1,4 +1,4 @@
-# Gamma.app Prompt: Multi-Turn Distributed Prompt Injection Detection
+# Use the Gamma.app connector to generate the following presentation using the template with ID: g_kd7lcnh2jibwx17
 
 ## Instructions for Gamma
 
@@ -111,7 +111,7 @@ The complete model hierarchy on the v3 shared-prefix test set (5,130 conversatio
 **Statistical significance (paired bootstrap, 1,000 resamples):**
 - Temporal LSTM vs. max-vote: +0.131 F1 (p < 0.001)
 - Temporal LSTM vs. shuffled: +0.077 F1 (p < 0.001)
-- Attention vs. plain LSTM: +0.0003 F1 (p = 0.453, not significant)
+- Attention vs. plain LSTM: +0.000 F1 (p = 0.453, not significant)
 - DistilBERT concat vs. temporal LSTM: +0.155 F1 (2,460x more parameters)
 
 [IMAGE PLACEHOLDER: results/v3_model_hierarchy.png - Bar chart of all models with bootstrap confidence intervals]
@@ -183,15 +183,15 @@ The LSTM processes one turn-encoding per timestep. Inspecting the forget, input,
 
 The DistilBERT baselines raise an honest question: why not just use the bigger model?
 
-| Model | F1 | Trainable Params | Inference on Jetson |
-|-------|:---:|:---:|:---:|
-| Temporal LSTM | 0.837 | 27K | ~5ms |
-| Hierarchical DistilBERT | 0.976 | 5.5M | ~40ms |
-| Concatenated DistilBERT | 0.992 | 66.4M | ~80ms |
+| Model | F1 | Trainable Params |
+|-------|:---:|:---:|
+| Temporal LSTM | 0.837 | 27K |
+| Hierarchical DistilBERT | 0.976 | 5.5M |
+| Concatenated DistilBERT | 0.992 | 66.4M |
 
 - On a cloud GPU, the 0.992 model is the obvious choice; the parameter cost is irrelevant
-- On edge hardware (Jetson, mobile, IoT), 66.4M parameters may not fit in memory, and 80ms per conversation may exceed latency budgets
-- The dual-encoder trained from scratch with no pretrained weights in 0.08 kWh on a single Jetson Orin AGX
+- On edge hardware (Jetson, mobile, IoT), 66.4M parameters may not fit in memory and may exceed latency budgets
+- The dual-encoder trained from scratch with no pretrained weights on a single Jetson Orin AGX
 - Online detection is feasible: the frozen GRU encodes each new turn independently, and the LSTM updates its hidden state incrementally
 
 **Takeaway:** Accuracy-efficiency tradeoffs are deployment decisions, not modeling failures. Know your constraints before choosing your architecture.

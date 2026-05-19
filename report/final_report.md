@@ -1,9 +1,9 @@
-# Multi-Turn Distributed Prompt Injection Detection
-
-**Author:** Rock Lambros  
-**Date:** May 2026  
-**Platform:** NVIDIA Jetson Orin AGX (64GB RAM, 2048-core Ampere GPU)
-
+---
+title: "Multi-Turn Distributed Prompt Injection Detection"
+author: 'Kyriakos "Rock" Lambros'
+date: 'COMP 4531: Deep Learning, Spring 2026'
+abstract: |
+  Single-turn prompt injection classifiers achieve high accuracy on known attack distributions, yet they fail against multi-turn attacks that distribute malicious intent across several conversation turns, where each turn appears benign in isolation and the adversarial signal emerges only from how turns relate over time. We present a dual-encoder architecture pairing a frozen single-turn GRU encoder (2.6M parameters) with a trainable sequence-level LSTM (27K trainable parameters) that carries accumulated context across turns. On 73,390 single-turn samples from eight public datasets, the Chollet heuristic correctly predicts that a TF-IDF bag-of-bigrams classifier (F1 = 0.834) outperforms all deep learning models, including transformers, at this data scale. On a shared-prefix dataset of 27,180 synthetic multi-turn conversations generated with Claude Sonnet 4.6 across four difficulty tiers, the temporal LSTM reaches F1 = 0.837 (95% bootstrap CI [0.826, 0.847]) and significantly outperforms turn-level max-voting by +0.131 F1 (paired bootstrap, p < 0.001) using the same frozen encoder. Shuffling the turn order of correctly classified attacks flips 55% to incorrect, the strongest evidence that the model learns genuine temporal patterns rather than bag-of-turns features. A 66.4M-parameter concatenated DistilBERT reaches F1 = 0.992 with 2,460x more trainable parameters; the contribution here is not absolute accuracy but the demonstration that temporal modeling adds significant, ordering-dependent signal beyond per-turn classification in a 27K-parameter model deployable on resource-constrained devices.
 ---
 
 ## 1. Problem Statement and Motivation
@@ -75,6 +75,8 @@ No public dataset of multi-turn distributed attacks exists. We generated **27,18
 
 **Data quality controls**: (1) Shared-prefix pairing eliminates early-turn confounds. (2) Validation gate: a pre-trained GRU classifier rejects sequences where any individual turn exceeds the detection threshold, forcing the attack signal into cross-turn patterns. (3) Confound gate battery: seven automated checks run on 5-fold cross-validation of training data.
 
+![v3 shared-prefix dataset composition: difficulty-tier sizes, attack-strategy mix, and conversation-length distribution.](figures/v3_data_overview.png){ width=95% }
+
 ### 2.4 Tokenization
 
 Custom vocabulary of 20,000 tokens built from training data only. Max sequence length: 256 tokens. OOV rate: 0.87% on training, 1.19% on validation.
@@ -134,6 +136,8 @@ Dual-encoder architecture:
 3. **Classification head**: Dense(64→32→1) with dropout
 
 Only ~27,000 parameters trainable (the sequence LSTM and head). Turn encoder's 2.6M parameters are frozen.
+
+![t-SNE of the frozen GRU turn encoder's representation space, showing progressive separation of benign and injection samples through the network.](figures/embedding_space_manifold.png){ width=100% }
 
 ### 3.5 Iteration 6: Attention
 
@@ -203,6 +207,8 @@ All results below are on the v3 test set (5,130 sequences, 4 difficulty tiers, b
 | Cosine baseline | 0.612 | [0.596, 0.627] | 0.642 | 0 |
 | A10 mean-vote | 0.231 | n/a | n/a | 0 |
 
+![Model hierarchy on the v3 shared-prefix test set (5,130 sequences) with 95% bootstrap confidence intervals from 1000 resamples.](figures/v3_model_hierarchy.png){ width=90% }
+
 ### 4.3 Per-Tier Breakdown
 
 | Tier | iter5 F1 | iter6 F1 | DistilBERT-concat F1 | n |
@@ -211,6 +217,8 @@ All results below are on the v3 test set (5,130 sequences, 4 difficulty tiers, b
 | Medium | 0.828 | 0.832 | 0.991 | 1,414 |
 | Hard | 0.828 | 0.830 | 0.994 | 1,394 |
 | Adversarial | 0.802 | 0.786 | 0.985 | 860 |
+
+![Per-tier F1 across model variants. The difficulty ordering (easy to adversarial) is stable across architectures, confirming the tiers measure a model-independent property.](figures/v3_tier_variant_heatmap.png){ width=90% }
 
 ### 4.4 Statistical Significance
 
@@ -228,6 +236,8 @@ Paired one-sided bootstrap tests (1000 resamples):
 
 Shuffling the turns of correctly classified attack sequences: 55% flip from correct to incorrect. Ordered F1 = 0.837 → shuffled F1 = 0.489 (on the originally-correct subset). Flip rate is uniform across tiers (54-56%).
 
+![Turn-order and pooling ablations: ordered baseline versus shuffled, reversed, mean pool, max pool, and prefix-only. Shuffling drops F1 by 0.077 (p < 0.001).](figures/v3_ablation_summary.png){ width=90% }
+
 ### 4.6 Per-Strategy Breakdown
 
 | Strategy | iter5 F1 | iter6 F1 | n (test) |
@@ -236,6 +246,8 @@ Shuffling the turns of correctly classified attack sequences: 55% flip from corr
 | Gradual escalation | 0.676 | 0.681 | 669 |
 | Context priming | 0.628 | 0.650 | 372 |
 | Instruction layering | 0.605 | 0.612 | 364 |
+
+![Per-strategy F1 for the temporal models. Fragment distribution is easiest to detect; instruction layering is hardest, consistent with its smoother cumulative signal.](figures/v3_strategy_heatmap.png){ width=90% }
 
 ### 4.7 Confound Gate Analysis
 
@@ -255,6 +267,8 @@ The passing gates confirm the shared-prefix design eliminates early-turn and len
 
 ---
 
+![Confound gate battery run on 5-fold cross-validation of training data. Passing gates (first-turn, length, max-vote BoW) confirm the shared-prefix design; failing vocabulary gates motivate the turn-order analysis.](figures/v3_confound_gates.png){ width=85% }
+
 ## 5. Discussion
 
 ### 5.1 Why Temporal Modeling Works
@@ -265,6 +279,8 @@ The dual-encoder architecture succeeds because it separates two concerns:
 
 The turn-level voting gap (+0.131 F1 over max-vote, p < 0.001) demonstrates that independent per-turn scoring cannot recover the cross-turn signal. The shuffled-turns gap (+0.077 F1, p < 0.001) confirms that turn order carries genuine information. These two results together establish that the LSTM learns temporal relationships, not bag-of-turns features.
 
+![LSTM forget, input, and output gate activations across conversation turns for representative attack and benign sequences. The forget gate drops at the divergence point in attacks.](figures/gate_activations_heatmap.png){ width=90% }
+
 ### 5.2 The DistilBERT Question
 
 Concatenated DistilBERT achieves F1 = 0.992 with 66.4M trainable parameters versus our 0.837 with 27K, a 2,460x parameter ratio. This gap has two interpretations:
@@ -272,6 +288,8 @@ Concatenated DistilBERT achieves F1 = 0.992 with 66.4M trainable parameters vers
 The DistilBERT models have full text access and can exploit both temporal and vocabulary signals, including the residual vocabulary differences that the confound gates flagged. Our model operates in a 32-dimensional embedding space where vocabulary is compressed away.
 
 The comparison that matters is not "does our model beat DistilBERT" (it does not) but "does temporal modeling add value beyond per-turn classification" (it does, significantly). The 27K-parameter temporal model is deployable on resource-constrained devices where DistilBERT is impractical.
+
+![F1 versus trainable parameter count. The 27K-parameter temporal LSTM and 66.4M-parameter concatenated DistilBERT bound the accuracy-efficiency Pareto frontier.](figures/v3_param_efficiency.png){ width=80% }
 
 ### 5.3 What the Autoencoder Ablation Reveals
 

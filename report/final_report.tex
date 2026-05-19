@@ -1,677 +1,862 @@
-\documentclass[11pt,letterpaper]{article}
-
-% Packages
-\usepackage[margin=1in]{geometry}
-\usepackage{booktabs}
-\usepackage{graphicx}
-\usepackage{hyperref}
-\usepackage{caption}
-\usepackage{float}
-\usepackage{amsmath}
-\usepackage{amssymb}
-\usepackage{enumitem}
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\documentclass[
+  11pt,
+]{report}
 \usepackage{xcolor}
-\usepackage{tabularx}
-\usepackage{multirow}
-
-\hypersetup{
-    colorlinks=true,
-    linkcolor=blue!70!black,
-    citecolor=blue!70!black,
-    urlcolor=blue!70!black
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{longtable,booktabs,array}
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\usepackage{graphicx}
+\makeatletter
+\newsavebox\pandoc@box
+\newcommand*\pandocbounded[1]{% scales image to fit in text height/width
+  \sbox\pandoc@box{#1}%
+  \Gscale@div\@tempa{\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
+  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
+  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi% select the smaller of both
+  \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}%
+  \else\usebox{\pandoc@box}%
+  \fi%
 }
+% Set default figure placement to htbp
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  pdftitle={Multi-Turn Distributed Prompt Injection Detection},
+  pdfauthor={Kyriakos ``Rock'' Lambros},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
 
-% Title
-\title{\textbf{Multi-Turn Distributed Prompt Injection Detection} \\[0.5em]
-\large COMP4531 Deep Learning --- Final Project Report}
-\author{Rock Lambros \\
-\texttt{kyriakos.lambros@du.edu}}
-\date{April 2026 \\[0.5em]
-\small Platform: NVIDIA Jetson Orin AGX (64GB RAM, 2048-core Ampere GPU)}
+\title{Multi-Turn Distributed Prompt Injection Detection}
+\author{Kyriakos ``Rock'' Lambros}
+\date{COMP 4531: Deep Learning, Spring 2026}
 
 \begin{document}
 \maketitle
-\thispagestyle{empty}
-
 \begin{abstract}
-Single-turn prompt injection classifiers achieve high accuracy on known attack distributions, yet they fail against multi-turn attacks that distribute malicious intent across several conversation turns. Each turn in isolation appears benign; the adversarial signal emerges only from how turns relate over time. We present a dual-encoder architecture that pairs a frozen single-turn GRU encoder (2.6M parameters) with a trainable sequence-level LSTM (27K parameters) to carry forward accumulated context across turns. On 73,390 single-turn samples from eight public datasets, the Chollet heuristic correctly predicts that TF-IDF bag-of-bigrams (F1\,=\,0.834) outperforms all deep learning models including transformers at this data scale. On 7,000 synthetic multi-turn conversations modeled after published attack strategies (Crescendo, Foot-in-the-Door, fragment distribution, instruction layering), the temporal architecture achieves F1\,=\,0.989, a +10.3 percentage point improvement over the best per-turn classifier (F1\,=\,0.887). Adding attention raises F1 to 0.992 while providing interpretability, and threshold tuning reaches 0.995. These results confirm that temporal modeling captures escalation patterns invisible to single-turn classification.
+Single-turn prompt injection classifiers achieve high accuracy on known
+attack distributions, yet they fail against multi-turn attacks that
+distribute malicious intent across several conversation turns, where
+each turn appears benign in isolation and the adversarial signal emerges
+only from how turns relate over time. We present a dual-encoder
+architecture pairing a frozen single-turn GRU encoder (2.6M parameters)
+with a trainable sequence-level LSTM (27K trainable parameters) that
+carries accumulated context across turns. On 73,390 single-turn samples
+from eight public datasets, the Chollet heuristic correctly predicts
+that a TF-IDF bag-of-bigrams classifier (F1 = 0.834) outperforms all
+deep learning models, including transformers, at this data scale. On a
+shared-prefix dataset of 27,180 synthetic multi-turn conversations
+generated with Claude Sonnet 4.6 across four difficulty tiers, the
+temporal LSTM reaches F1 = 0.837 (95\% bootstrap CI {[}0.826, 0.847{]})
+and significantly outperforms turn-level max-voting by +0.131 F1 (paired
+bootstrap, p \textless{} 0.001) using the same frozen encoder. Shuffling
+the turn order of correctly classified attacks flips 55\% to incorrect,
+the strongest evidence that the model learns genuine temporal patterns
+rather than bag-of-turns features. A 66.4M-parameter concatenated
+DistilBERT reaches F1 = 0.992 with 2,460x more trainable parameters; the
+contribution here is not absolute accuracy but the demonstration that
+temporal modeling adds significant, ordering-dependent signal beyond
+per-turn classification in a 27K-parameter model deployable on
+resource-constrained devices.
 \end{abstract}
 
+{
+\setcounter{tocdepth}{2}
 \tableofcontents
-\newpage
+}
+\section{1. Problem Statement and
+Motivation}\label{problem-statement-and-motivation}
 
-% ============================================================
-\section{Problem Statement and Motivation}
-% ============================================================
+\subsection{1.1 The Problem}\label{the-problem}
 
-\subsection{The Problem}
+Single-turn prompt injection detection achieves high accuracy on known
+attack patterns. ProtectAI's DeBERTa model reaches 99\%+ F1 on published
+benchmarks, yet this performance is limited to known attack
+distributions. Novel attacks, adversarially crafted inputs, and
+multi-turn strategies routinely evade these detectors (InjecGuard, 2024;
+Vassilev, 2025). Real-world attacks against AI agent systems
+increasingly distribute malicious intent across multiple conversation
+turns, where each individual turn appears benign in isolation.
 
-Single-turn prompt injection detection achieves high accuracy on known attack patterns. ProtectAI's DeBERTa model reaches 99\%+ F1 on published benchmarks \cite{protectai2024}. This performance is limited to known attack distributions. Novel attacks, adversarially crafted inputs, and multi-turn strategies routinely evade these detectors \cite{injecguard2024, vassilev2025}. Real-world attacks against AI agent systems increasingly distribute malicious intent across multiple conversation turns, where each individual turn appears benign in isolation.
+This is the \textbf{Crescendo attack pattern} (Russinovich et al.,
+USENIX Security 2025): an attacker gradually escalates across turns,
+establishing trust and context before making the exploitative request.
+The \textbf{Foot-in-the-Door technique} (EMNLP 2025) similarly exploits
+compliance momentum across turns. Vassilev (2025) extends Gödel's
+incompleteness theorem to argue that no single-turn classifier can
+theoretically detect all such attacks.
 
-This is the \textbf{Crescendo attack pattern} \cite{russinovich2025}: an attacker gradually escalates across turns, establishing trust and context before making the exploitative request. The \textbf{Foot-in-the-Door technique} \cite{emnlp2025fitd} similarly leverages compliance momentum across turns. Vassilev \cite{vassilev2025} extends G\"{o}del's incompleteness theorem to argue that no single-turn classifier can theoretically detect all such attacks.
+\subsection{1.2 Why Deep Learning}\label{why-deep-learning}
 
-\subsection{Why Deep Learning}
+The multi-turn attack signal is fundamentally temporal: earlier turns
+create context that later turns exploit. LSTM and GRU architectures are
+designed to model exactly this type of sequential dependency through
+their gating mechanisms. A bag-of-words or per-turn classifier has no
+mechanism to carry forward accumulated risk state.
 
-The multi-turn attack signal is fundamentally temporal: earlier turns create context that later turns exploit. LSTM and GRU architectures are designed to model exactly this type of sequential dependency through their gating mechanisms. A bag-of-words or per-turn classifier has no mechanism to carry forward accumulated risk state.
+\subsection{1.3 Contribution}\label{contribution}
 
-\subsection{Contribution}
+This project builds a multi-turn distributed prompt injection detection
+system using a dual-encoder architecture: a frozen single-turn encoder
+paired with a sequence-level LSTM that carries forward context across
+turns. We evaluate on a shared-prefix dataset of 27,180 synthetic
+conversations across four difficulty tiers, with bootstrap confidence
+intervals and paired significance tests for all comparisons.
 
-This project builds a multi-turn distributed prompt injection detection system using a dual-encoder architecture: a frozen single-turn encoder paired with a sequence-level LSTM that carries forward context across turns. We demonstrate a \textbf{+10.3 percentage point F1 improvement} over per-turn classification on multi-turn attack data (F1 = 0.989 vs.\ 0.887).
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 
-% ============================================================
-\section{Data and Preprocessing}
-% ============================================================
+\section{2. Data and Preprocessing}\label{data-and-preprocessing}
 
-\subsection{Single-Turn Datasets}
+\subsection{2.1 Single-Turn Datasets}\label{single-turn-datasets}
 
-Eight HuggingFace datasets were merged (expanded from the original three to enable transformer comparison):
+Eight HuggingFace datasets were merged:
 
-\begin{table}[H]
-\centering
-\caption{Source datasets with sample counts and types.}
-\label{tab:datasets}
-\begin{tabular}{@{}lrl@{}}
-\toprule
-Dataset & Samples & Type \\
-\midrule
+{\def\LTcaptype{} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3750}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.3750}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.2500}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Dataset
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Samples
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Type
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
 deepset/prompt-injections & 662 & Binary classification \\
 xTRam1/safe-guard-prompt-injection & 10,296 & Binary classification \\
 neuralchemy/Prompt-injection-dataset & 6,274 & Binary classification \\
-imoxto/prompt\_injection\_cleaned\_dataset-v2 & 40,000 & Binary w/ system prompt \\
-reshabhs/SPML\_Chatbot\_Prompt\_Injection & 16,012 & Gandalf CTF attacks \\
-TrustAIRLab/in-the-wild-jailbreak (jailbreak) & 1,405 & Real-world jailbreaks \\
-TrustAIRLab/in-the-wild-jailbreak (regular) & 13,735 & Real-world benign \\
+imoxto/prompt\_injection\_cleaned\_dataset-v2 & 40,000 (subsampled from
+535K) & Binary with system prompt context \\
+reshabhs/SPML\_Chatbot\_Prompt\_Injection & 16,012 & Gandalf CTF
+attacks \\
+TrustAIRLab/in-the-wild-jailbreak-prompts (jailbreak) & 1,405 &
+Real-world jailbreaks \\
+TrustAIRLab/in-the-wild-jailbreak-prompts (regular) & 13,735 &
+Real-world benign prompts \\
 jackhhao/jailbreak-classification & 1,306 & Curated binary \\
-\bottomrule
-\end{tabular}
-\end{table}
+\end{longtable}
+}
 
-After cleaning (deduplication, whitespace normalization, length filtering), 73,390 samples remained, split 70/15/15 stratified on label: 51,373 train / 11,008 val / 11,009 test. Class balance: 64\% benign / 36\% injection.
+After cleaning (deduplication, whitespace normalization, length
+filtering), 73,390 samples remained, split 70/15/15 stratified on label:
+51,373 train / 11,008 val / 11,009 test. Class balance:
+\textasciitilde64\% benign / 36\% injection.
 
-\subsection{Data Bias Analysis}
-\label{sec:bias}
+\subsection{2.2 Cleaning Pipeline}\label{cleaning-pipeline}
 
-Three sources of bias require discussion.
+Nine cleaning steps applied in order: column normalization, label
+normalization (0=benign, 1=injection), whitespace stripping, internal
+whitespace collapse, exact deduplication, near-deduplication (lowercase
++ strip punctuation), short text removal (\textless3 tokens), long text
+removal (\textgreater2048 chars), and logging.
 
-\textbf{Source distribution dominance.} The \texttt{imoxto} dataset contributes 40,000 of 73,390 samples (54.5\% of training data). This dataset contains system prompt context that other sources lack, potentially biasing models toward detecting injection patterns co-occurring with system prompts rather than injection content alone. The Gandalf CTF attacks (16,012 samples, 21.8\%) skew toward game-style jailbreaks that may not represent production attack distributions.
+Removals: 167 exact duplicates, 40 near-duplicates, 132 empty/short, 489
+too-long.
 
-\textbf{Text length correlation with class.} Injection texts tend to be longer than benign queries (mean 112 tokens vs.\ 63 tokens for benign). Models could partially exploit length as a proxy feature rather than learning semantic content. The TF-IDF baselines are particularly susceptible to this, as longer documents produce denser feature vectors.
+\subsection{2.3 Synthetic Multi-Turn Data (v3
+Shared-Prefix)}\label{synthetic-multi-turn-data-v3-shared-prefix}
 
-\textbf{Class imbalance handling.} The 64/36 benign/injection split is moderate. We chose \textit{not} to apply class weights or oversampling for two reasons: (1) the imbalance ratio (1.78:1) is mild enough that standard loss functions converge without correction, and (2) applying class weights in preliminary experiments increased recall by 2 points at the cost of 5 points of precision, a poor trade-off for a security classifier where false positives erode user trust. Stratified splitting preserves the natural distribution in all partitions.
+No public dataset of multi-turn distributed attacks exists. We generated
+\textbf{27,180 synthetic conversations} (18,754 train / 3,296 val /
+5,130 test) using a shared-prefix architecture and the Anthropic API
+(Claude Sonnet 4.6).
 
-\subsection{Cleaning Pipeline}
+\textbf{Shared-prefix design}: Each conversation is generated as a
+matched pair: one benign continuation and one attack continuation
+branching from an identical conversational prefix. The prefix length
+\emph{k} is sampled uniformly from \{3, 4, 5\} user turns. Both
+continuations run for 3-5 additional turns, producing conversations of
+6-9 user turns total (12-19 turns including assistant responses). This
+paired structure eliminates vocabulary-level confounds in the opening
+turns: a first-turn-only classifier achieves F1 = 0.35 (chance level).
 
-Nine cleaning steps applied in order: column normalization, label normalization (0 = benign, 1 = injection), whitespace stripping, internal whitespace collapse, exact deduplication, near-deduplication (lowercase + strip punctuation), short text removal ($<$3 tokens), long text removal ($>$2048 chars), and logging.
+\textbf{Attack strategies}:
 
-Removals: 167 exact duplicates, 40 near-duplicates, 132 empty/short, 489 too-long.
+{\def\LTcaptype{} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2500}}
+  >{\centering\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.1250}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.2250}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 6\tabcolsep) * \real{0.4000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Strategy
+\end{minipage} & \begin{minipage}[b]{\linewidth}\centering
+\% of Attacks
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Pattern
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Research Basis
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Fragment distribution & 45\% & Split injection across 3-5 turns,
+interleaved with on-topic filler & Evasion of per-message filters \\
+Gradual escalation & 25\% & Crescendo pattern, where each turn nudges
+toward the attack goal & Russinovich et al.~(USENIX Security 2025) \\
+Context priming & 15\% & Establish persona/authority early, exploit
+later & Foot-in-the-Door (EMNLP 2025) \\
+Instruction layering & 15\% & Each turn adds one constraint,
+cumulatively overriding safety & Incremental constraint injection \\
+\end{longtable}
+}
 
-\subsection{Synthetic Multi-Turn Data}
+\textbf{Difficulty tiers}: Each attack is assigned a tier (easy, medium,
+hard, adversarial) controlling how aggressively the injection signal is
+obscured. All splits are balanced 50/50 within each tier.
 
-No public dataset of multi-turn distributed attacks exists. We generated 7,000 synthetic conversations (5,000 train, 1,000 val, 1,000 test) using four strategies:
+{\def\LTcaptype{} % do not increment counter
+\begin{longtable}[]{@{}lrrr@{}}
+\toprule\noalign{}
+Tier & Train & Val & Test \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Easy & 5,812 & 1,002 & 1,462 \\
+Medium & 5,684 & 1,000 & 1,414 \\
+Hard & 5,590 & 976 & 1,394 \\
+Adversarial & 1,668 & 318 & 860 \\
+\end{longtable}
+}
 
-\begin{itemize}[nosep]
-    \item \textbf{Fragment distribution (40\%)}: Split injection text into 3--5 fragments interleaved with benign filler.
-    \item \textbf{Gradual escalation (30\%)}: Crescendo pattern; each turn adds specificity toward the goal.
-    \item \textbf{Context priming (20\%)}: Establish persona/authority in early turns, exploit later.
-    \item \textbf{Instruction layering (10\%)}: Each turn adds one constraint, cumulatively overriding safety.
+\textbf{Data quality controls}: (1) Shared-prefix pairing eliminates
+early-turn confounds. (2) Validation gate: a pre-trained GRU classifier
+rejects sequences where any individual turn exceeds the detection
+threshold, forcing the attack signal into cross-turn patterns. (3)
+Confound gate battery: seven automated checks run on 5-fold
+cross-validation of training data.
+
+\begin{figure}
+\centering
+\includegraphics[width=0.95\linewidth,height=\textheight,keepaspectratio,alt={v3 shared-prefix dataset composition: difficulty-tier sizes, attack-strategy mix, and conversation-length distribution.}]{figures/v3_data_overview.png}
+\caption{v3 shared-prefix dataset composition: difficulty-tier sizes,
+attack-strategy mix, and conversation-length distribution.}
+\end{figure}
+
+\subsection{2.4 Tokenization}\label{tokenization}
+
+Custom vocabulary of 20,000 tokens built from training data only. Max
+sequence length: 256 tokens. OOV rate: 0.87\% on training, 1.19\% on
+validation.
+
+\subsection{2.5 Input/Output
+Specification}\label{inputoutput-specification}
+
+{\def\LTcaptype{} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2500}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1500}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1750}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1750}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2500}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Variable
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Type
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Shape
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Range
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Encoding
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Raw text & string & variable length & n/a & Unprocessed user input \\
+Token IDs (single-turn) & LongTensor & (batch, 256) & {[}0, 19999{]} &
+Vocabulary lookup, post-padded with 0 \\
+Token IDs (multi-turn) & LongTensor & (batch, 10, 256) & {[}0, 19999{]}
+& Each turn tokenized independently \\
+Turn mask & FloatTensor & (batch, 10) & \{0, 1\} & 1 = real turn, 0 =
+padding \\
+Model output & float & (batch, 1) & {[}0, 1{]} & Sigmoid probability of
+injection \\
+Label & int & scalar & \{0, 1\} & 0 = benign, 1 = injection \\
+\end{longtable}
+}
+
+Raw text is lowercased and split on whitespace. Each word maps to an
+integer via a vocabulary built from training data only (20,000 tokens).
+Sequences shorter than 256 tokens are post-padded with zeros; sequences
+longer than 256 are truncated. For multi-turn input, each turn is
+encoded independently, and conversations with fewer than 10 turns are
+padded with zero-vectors. The turn mask distinguishes real turns from
+padding.
+
+\subsection{2.6 Metric Selection}\label{metric-selection}
+
+With 64\% benign and 36\% injection samples, a classifier that always
+predicts ``benign'' achieves 64\% accuracy while catching zero attacks.
+Accuracy rewards correct predictions on the majority class, masking
+complete failure on the minority class. F1 (the harmonic mean of
+precision and recall) penalizes both missed attacks (low recall) and
+false alarms (low precision), making it the appropriate primary metric
+for this task. The security cost asymmetry reinforces this choice: a
+missed injection (false negative) can lead to system compromise, while a
+false alarm (false positive) results only in a human review.
+
+\subsection{2.7 Chollet Heuristic
+Analysis}\label{chollet-heuristic-analysis}
+
+Following Chollet (Deep Learning with Python, Chapters 11/15), the ratio
+of training samples to mean words per sample (51,373 / 87.3 = 588, well
+below the 1,500 threshold) predicts that bag-of-bigrams models should
+outperform sequence and transformer models on single-turn data. This
+prediction is empirically validated.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\section{3. Model Architecture}\label{model-architecture}
+
+\subsection{3.1 Iteration 0: Baselines}\label{iteration-0-baselines}
+
+TF-IDF (max 10K features, bigrams) + Logistic Regression and Random
+Forest. No deep learning.
+
+\subsection{3.2 Iterations 1-4: Single-Turn
+Models}\label{iterations-1-4-single-turn-models}
+
+{\def\LTcaptype{} % do not increment counter
+\begin{longtable}[]{@{}lll@{}}
+\toprule\noalign{}
+Iter & Architecture & Key Feature \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+1 & LSTM(128→64) & Random embeddings \\
+2 & LSTM(100→64) & GloVe 6B 100d (frozen) \\
+3 & BiLSTM(128→64) & Bidirectional + dropout (0.3, 0.5) \\
+4 & BiGRU(128→64) & GRU comparison \\
+\end{longtable}
+}
+
+All use: Adam optimizer, BCEWithLogitsLoss, early stopping,
+ReduceLROnPlateau, gradient clipping (max\_norm=1.0).
+
+\subsection{3.3 Iterations 4b-4c: Transformer
+Comparison}\label{iterations-4b-4c-transformer-comparison}
+
+{\def\LTcaptype{} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.1875}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.4062}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 4\tabcolsep) * \real{0.4062}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Iter
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Architecture
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Key Feature
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+4b & Custom Transformer Encoder & 2-layer, 4-head self-attention, same
+vocab as LSTM \\
+4c & DistilBERT (frozen body) & Transfer learning, pretrained language
+model \\
+\end{longtable}
+}
+
+\subsection{3.4 Iteration 5: Multi-Turn
+Classifier}\label{iteration-5-multi-turn-classifier}
+
+Dual-encoder architecture: 1. \textbf{Turn encoder} (frozen GRU from
+Iter 4): encodes each turn into 32-dim vector 2. \textbf{Sequence LSTM}
+(64-dim hidden): processes turn vectors temporally 3.
+\textbf{Classification head}: Dense(64→32→1) with dropout
+
+Only \textasciitilde27,000 parameters trainable (the sequence LSTM and
+head). Turn encoder's 2.6M parameters are frozen.
+
+\begin{figure}
+\centering
+\includegraphics[width=1\linewidth,height=\textheight,keepaspectratio,alt={t-SNE of the frozen GRU turn encoder's representation space, showing progressive separation of benign and injection samples through the network.}]{figures/embedding_space_manifold.png}
+\caption{t-SNE of the frozen GRU turn encoder's representation space,
+showing progressive separation of benign and injection samples through
+the network.}
+\end{figure}
+
+\subsection{3.5 Iteration 6: Attention}\label{iteration-6-attention}
+
+Additive (Bahdanau) attention over sequence LSTM hidden states replaces
+final-hidden-state-only classification. Each turn gets an attention
+weight indicating its importance. Provides interpretability at zero
+accuracy cost.
+
+\subsection{3.6 DistilBERT Baselines}\label{distilbert-baselines}
+
+Two transformer baselines test whether raw model capacity substitutes
+for architectural design:
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{PM-1a: Hierarchical DistilBERT} (71.9M total, 5.5M trainable):
+  Frozen DistilBERT per turn → {[}CLS{]} representations → 2-layer
+  cross-turn transformer → classification head.
+\item
+  \textbf{PM-1b: Concatenated DistilBERT} (66.4M, all trainable): All
+  turns concatenated with {[}SEP{]}, fully fine-tuned DistilBERT.
 \end{itemize}
 
-Balanced 50/50 classes, 3--10 turns per conversation. Benign conversations sampled from a pool of 500+ unique filler turns.
+\subsection{3.7 Ablation Models}\label{ablation-models}
 
-\subsection{Tokenization}
+Five ablation experiments isolate what drives temporal detection:
 
-Custom vocabulary of 20,000 tokens built from training data only. Max sequence length: 256 tokens. OOV rate: 0.87\% on training, 1.19\% on validation.
+{\def\LTcaptype{} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.4000}}
+  >{\raggedright\arraybackslash}p{(\linewidth - 2\tabcolsep) * \real{0.6000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Ablation
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+What It Tests
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+A10: Turn-level voting (max, mean, top-3) & Can per-turn scoring +
+aggregation match temporal modeling? \\
+Shuffled turns & Is turn order informative? \\
+Reversed turns & Is forward-vs-backward direction informative? \\
+Mean/max pool & Does the LSTM's sequential processing add value beyond
+aggregation? \\
+Continuation-only / prefix-only & Which turns carry the class signal? \\
+Autoencoder encoder & Does the GRU's injection-detection training
+matter? \\
+\end{longtable}
+}
 
-\subsection{I/O Variable Specification}
-\label{sec:io}
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 
-Table~\ref{tab:io_single} specifies all input and output variables for the single-turn models. Table~\ref{tab:io_multi} specifies variables for the multi-turn dual-encoder.
+\section{4. Results}\label{results}
 
-\begin{table}[H]
+\subsection{4.1 Single-Turn Results}\label{single-turn-results}
+
+{\def\LTcaptype{} % do not increment counter
+\begin{longtable}[]{@{}llll@{}}
+\toprule\noalign{}
+Model & F1 & Accuracy & ROC-AUC \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Stratified random (chance) & 0.358 & 0.540 & 0.500 \\
+TF-IDF + LR (Iter 0) & 0.814 & 0.878 & 0.939 \\
+\textbf{TF-IDF + RF (Iter 0)} & \textbf{0.834} & \textbf{0.890} &
+\textbf{0.945} \\
+LSTM (Iter 1) & 0.814 & 0.877 & 0.942 \\
+GloVe LSTM (Iter 2) & 0.813 & 0.881 & 0.942 \\
+BiLSTM d=0.3 (Iter 3) & 0.815 & 0.884 & 0.942 \\
+GRU (Iter 4) & 0.815 & 0.885 & 0.946 \\
+Custom Transformer (Iter 4b) & 0.808 & 0.880 & 0.944 \\
+DistilBERT frozen (Iter 4c) & 0.806 & 0.873 & 0.942 \\
+\end{longtable}
+}
+
+\textbf{Encoder decision}: GRU, which offers competitive F1 with fewer
+parameters than BiLSTM. Selected as the frozen turn encoder for all
+multi-turn experiments.
+
+\textbf{Chollet heuristic validated}: TF-IDF + RF achieves the highest
+single-turn F1 at 0.834, confirming the prediction that at ratio 588,
+simpler models outperform sequence and transformer architectures.
+
+\subsection{4.2 Multi-Turn Results (v3 Shared-Prefix
+Dataset)}\label{multi-turn-results-v3-shared-prefix-dataset}
+
+All results below are on the v3 test set (5,130 sequences, 4 difficulty
+tiers, balanced 50/50 labels). 95\% bootstrap confidence intervals from
+1000 resamples.
+
+{\def\LTcaptype{} % do not increment counter
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.2593}}
+  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1852}}
+  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1852}}
+  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1852}}
+  >{\centering\arraybackslash}p{(\linewidth - 8\tabcolsep) * \real{0.1852}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Model
+\end{minipage} & \begin{minipage}[b]{\linewidth}\centering
+F1
+\end{minipage} & \begin{minipage}[b]{\linewidth}\centering
+95\% CI
+\end{minipage} & \begin{minipage}[b]{\linewidth}\centering
+AUC
+\end{minipage} & \begin{minipage}[b]{\linewidth}\centering
+Trainable Params
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Concatenated DistilBERT & 0.992 & {[}0.989, 0.994{]} & 1.000 & 66.4M \\
+Hierarchical DistilBERT & 0.976 & {[}0.971, 0.980{]} & 0.998 & 5.5M \\
+Continuation-only LSTM & 0.846 & {[}0.835, 0.856{]} & 0.923 & 27K \\
+Autoencoder encoder & 0.845 & {[}0.834, 0.856{]} & 0.922 & 27K \\
+Iter 6 (+attention) & 0.837 & {[}0.825, 0.848{]} & 0.921 & 29K \\
+\textbf{Iter 5 (temporal LSTM)} & \textbf{0.837} & \textbf{{[}0.826,
+0.847{]}} & \textbf{0.919} & \textbf{27K} \\
+Reversed turns & 0.833 & {[}0.821, 0.844{]} & 0.916 & 27K \\
+Shuffled turns & 0.760 & {[}0.748, 0.772{]} & 0.849 & 27K \\
+Mean pool & 0.755 & {[}0.743, 0.768{]} & 0.839 & 27K \\
+A10 top-3-mean voting & 0.727 & n/a & n/a & 0 \\
+Max pool & 0.719 & {[}0.705, 0.733{]} & 0.819 & 27K \\
+A10 max-vote & 0.706 & n/a & n/a & 0 \\
+Prefix-only & 0.667 & {[}0.655, 0.679{]} & 0.500 & 27K \\
+Cosine baseline & 0.612 & {[}0.596, 0.627{]} & 0.642 & 0 \\
+A10 mean-vote & 0.231 & n/a & n/a & 0 \\
+\end{longtable}
+}
+
+\begin{figure}
 \centering
-\caption{I/O variable specification for single-turn models (Iterations 0--4).}
-\label{tab:io_single}
-\small
-\begin{tabular}{@{}llllp{5cm}@{}}
-\toprule
-Variable & Type & Shape & Range & Encoding \\
-\midrule
-\multicolumn{5}{l}{\textit{Inputs}} \\
-\midrule
-Token IDs & int64 & $(B, 256)$ & $[0, 19999]$ & Integer index into 20K vocabulary; 0 = PAD \\
-Sequence lengths & int64 & $(B,)$ & $[1, 256]$ & Actual token count before padding \\
-GloVe embeddings (Iter 2) & float32 & $(20000, 100)$ & $[-3.0, 3.0]$ & Pretrained 100d vectors, frozen \\
-TF-IDF features (Iter 0) & float64 & $(B, 10000)$ & $[0.0, 1.0]$ & Sparse bigram TF-IDF, L2-normalized \\
-\midrule
-\multicolumn{5}{l}{\textit{Outputs}} \\
-\midrule
-Logit & float32 & $(B, 1)$ & $(-\infty, +\infty)$ & Raw BCEWithLogitsLoss input \\
-Probability & float32 & $(B, 1)$ & $[0.0, 1.0]$ & Sigmoid of logit \\
-Predicted label & int & $(B,)$ & $\{0, 1\}$ & Threshold at 0.5; 0 = benign, 1 = injection \\
-\bottomrule
-\end{tabular}
-\end{table}
+\includegraphics[width=0.9\linewidth,height=\textheight,keepaspectratio,alt={Model hierarchy on the v3 shared-prefix test set (5,130 sequences) with 95\% bootstrap confidence intervals from 1000 resamples.}]{figures/v3_model_hierarchy.png}
+\caption{Model hierarchy on the v3 shared-prefix test set (5,130
+sequences) with 95\% bootstrap confidence intervals from 1000
+resamples.}
+\end{figure}
 
-\begin{table}[H]
+\subsection{4.3 Per-Tier Breakdown}\label{per-tier-breakdown}
+
+{\def\LTcaptype{} % do not increment counter
+\begin{longtable}[]{@{}lcccr@{}}
+\toprule\noalign{}
+Tier & iter5 F1 & iter6 F1 & DistilBERT-concat F1 & n \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Easy & 0.872 & 0.876 & 0.994 & 1,462 \\
+Medium & 0.828 & 0.832 & 0.991 & 1,414 \\
+Hard & 0.828 & 0.830 & 0.994 & 1,394 \\
+Adversarial & 0.802 & 0.786 & 0.985 & 860 \\
+\end{longtable}
+}
+
+\begin{figure}
 \centering
-\caption{I/O variable specification for multi-turn dual-encoder (Iterations 5--7).}
-\label{tab:io_multi}
-\small
-\begin{tabular}{@{}llllp{5cm}@{}}
-\toprule
-Variable & Type & Shape & Range & Encoding \\
-\midrule
-\multicolumn{5}{l}{\textit{Inputs}} \\
-\midrule
-Turn token IDs & int64 & $(B, T, 256)$ & $[0, 19999]$ & Per-turn token sequences; $T \leq 10$ turns \\
-Turn lengths & int64 & $(B, T)$ & $[1, 256]$ & Per-turn actual lengths \\
-Conversation lengths & int64 & $(B,)$ & $[3, 10]$ & Number of turns per conversation \\
-\midrule
-\multicolumn{5}{l}{\textit{Intermediate}} \\
-\midrule
-Turn embeddings & float32 & $(B, T, 32)$ & $\mathbb{R}^{32}$ & Frozen GRU encoder final hidden state \\
-Attention weights (Iter 6--7) & float32 & $(B, T)$ & $[0.0, 1.0]$ & Softmax over additive attention scores \\
-\midrule
-\multicolumn{5}{l}{\textit{Outputs}} \\
-\midrule
-Logit & float32 & $(B, 1)$ & $(-\infty, +\infty)$ & Raw BCEWithLogitsLoss input \\
-Probability & float32 & $(B, 1)$ & $[0.0, 1.0]$ & Sigmoid of logit \\
-Predicted label & int & $(B,)$ & $\{0, 1\}$ & Threshold at 0.5 (or 0.64 after tuning) \\
-\bottomrule
-\end{tabular}
-\end{table}
+\includegraphics[width=0.9\linewidth,height=\textheight,keepaspectratio,alt={Per-tier F1 across model variants. The difficulty ordering (easy to adversarial) is stable across architectures, confirming the tiers measure a model-independent property.}]{figures/v3_tier_variant_heatmap.png}
+\caption{Per-tier F1 across model variants. The difficulty ordering
+(easy to adversarial) is stable across architectures, confirming the
+tiers measure a model-independent property.}
+\end{figure}
 
-\subsection{Chollet Heuristic Analysis}
+\subsection{4.4 Statistical
+Significance}\label{statistical-significance}
 
-Following Chollet \cite{chollet2021}, we compute the ratio of training samples to mean words per sample to predict which model family will perform best:
+Paired one-sided bootstrap tests (1000 resamples):
 
-\begin{itemize}[nosep]
-    \item Training samples: 51,373
-    \item Mean words per sample: 87.3
-    \item Ratio: $51{,}373 / 87.3 = 588$
-    \item Threshold: 1,500
+{\def\LTcaptype{} % do not increment counter
+\begin{longtable}[]{@{}lcc@{}}
+\toprule\noalign{}
+Comparison & F1 Diff & p-value \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+iter5 \textgreater{} A10 max-vote & +0.131 & \textless{} 0.001 \\
+iter5 \textgreater{} A10 top-3-mean & +0.110 & \textless{} 0.001 \\
+iter5 \textgreater{} shuffled turns & +0.077 & \textless{} 0.001 \\
+iter6 \textgreater{} iter5 & +0.000 & 0.453 (n.s.) \\
+DistilBERT-concat \textgreater{} iter5 & +0.155 & \textless{} 0.001 \\
+\end{longtable}
+}
+
+\subsection{4.5 Turn-Order Sensitivity}\label{turn-order-sensitivity}
+
+Shuffling the turns of correctly classified attack sequences: 55\% flip
+from correct to incorrect. Ordered F1 = 0.837 → shuffled F1 = 0.489 (on
+the originally-correct subset). Flip rate is uniform across tiers
+(54-56\%).
+
+\begin{figure}
+\centering
+\includegraphics[width=0.9\linewidth,height=\textheight,keepaspectratio,alt={Turn-order and pooling ablations: ordered baseline versus shuffled, reversed, mean pool, max pool, and prefix-only. Shuffling drops F1 by 0.077 (p \textless{} 0.001).}]{figures/v3_ablation_summary.png}
+\caption{Turn-order and pooling ablations: ordered baseline versus
+shuffled, reversed, mean pool, max pool, and prefix-only. Shuffling
+drops F1 by 0.077 (p \textless{} 0.001).}
+\end{figure}
+
+\subsection{4.6 Per-Strategy Breakdown}\label{per-strategy-breakdown}
+
+{\def\LTcaptype{} % do not increment counter
+\begin{longtable}[]{@{}lccc@{}}
+\toprule\noalign{}
+Strategy & iter5 F1 & iter6 F1 & n (test) \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Fragment distribution & 0.776 & 0.787 & 1,160 \\
+Gradual escalation & 0.676 & 0.681 & 669 \\
+Context priming & 0.628 & 0.650 & 372 \\
+Instruction layering & 0.605 & 0.612 & 364 \\
+\end{longtable}
+}
+
+\begin{figure}
+\centering
+\includegraphics[width=0.9\linewidth,height=\textheight,keepaspectratio,alt={Per-strategy F1 for the temporal models. Fragment distribution is easiest to detect; instruction layering is hardest, consistent with its smoother cumulative signal.}]{figures/v3_strategy_heatmap.png}
+\caption{Per-strategy F1 for the temporal models. Fragment distribution
+is easiest to detect; instruction layering is hardest, consistent with
+its smoother cumulative signal.}
+\end{figure}
+
+\subsection{4.7 Confound Gate Analysis}\label{confound-gate-analysis}
+
+Seven gates run on 5-fold cross-validation of training data:
+
+{\def\LTcaptype{} % do not increment counter
+\begin{longtable}[]{@{}lccc@{}}
+\toprule\noalign{}
+Gate & F1 (5-fold mean) & Threshold & Result \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+First-turn only & 0.354 & \textless{} 0.58 & PASS \\
+Conversation length & 0.482 & \textless{} 0.55 & PASS \\
+Max-vote BoW & 0.684 & \textless{} 0.70 & PASS \\
+Unigram BoW & 0.938 & \textless{} 0.60 & FAIL \\
+Bigram BoW & 0.945 & \textless{} 0.65 & FAIL \\
+Last-turn only & 0.963 & \textless{} 0.65 & FAIL \\
+Mean-vote BoW & 0.926 & \textless{} 0.65 & FAIL \\
+\end{longtable}
+}
+
+The passing gates confirm the shared-prefix design eliminates early-turn
+and length confounds. The failing gates indicate that vocabulary
+differences persist in post-branch turns. The turn-order sensitivity
+analysis (55\% flip rate) demonstrates that the temporal LSTM relies on
+ordering information that BoW classifiers cannot exploit.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\begin{figure}
+\centering
+\includegraphics[width=0.85\linewidth,height=\textheight,keepaspectratio,alt={Confound gate battery run on 5-fold cross-validation of training data. Passing gates (first-turn, length, max-vote BoW) confirm the shared-prefix design; failing vocabulary gates motivate the turn-order analysis.}]{figures/v3_confound_gates.png}
+\caption{Confound gate battery run on 5-fold cross-validation of
+training data. Passing gates (first-turn, length, max-vote BoW) confirm
+the shared-prefix design; failing vocabulary gates motivate the
+turn-order analysis.}
+\end{figure}
+
+\section{5. Discussion}\label{discussion}
+
+\subsection{5.1 Why Temporal Modeling
+Works}\label{why-temporal-modeling-works}
+
+The dual-encoder architecture succeeds because it separates two
+concerns: 1. \textbf{What does each turn say?} (turn encoder, frozen,
+compressing to 32-dim) 2. \textbf{How do turns relate over time?}
+(sequence LSTM, which learns temporal patterns)
+
+The turn-level voting gap (+0.131 F1 over max-vote, p \textless{} 0.001)
+demonstrates that independent per-turn scoring cannot recover the
+cross-turn signal. The shuffled-turns gap (+0.077 F1, p \textless{}
+0.001) confirms that turn order carries genuine information. These two
+results together establish that the LSTM learns temporal relationships,
+not bag-of-turns features.
+
+\begin{figure}
+\centering
+\includegraphics[width=0.9\linewidth,height=\textheight,keepaspectratio,alt={LSTM forget, input, and output gate activations across conversation turns for representative attack and benign sequences. The forget gate drops at the divergence point in attacks.}]{figures/gate_activations_heatmap.png}
+\caption{LSTM forget, input, and output gate activations across
+conversation turns for representative attack and benign sequences. The
+forget gate drops at the divergence point in attacks.}
+\end{figure}
+
+\subsection{5.2 The DistilBERT Question}\label{the-distilbert-question}
+
+Concatenated DistilBERT achieves F1 = 0.992 with 66.4M trainable
+parameters versus our 0.837 with 27K, a 2,460x parameter ratio. This gap
+has two interpretations:
+
+The DistilBERT models have full text access and can exploit both
+temporal and vocabulary signals, including the residual vocabulary
+differences that the confound gates flagged. Our model operates in a
+32-dimensional embedding space where vocabulary is compressed away.
+
+The comparison that matters is not ``does our model beat DistilBERT''
+(it does not) but ``does temporal modeling add value beyond per-turn
+classification'' (it does, significantly). The 27K-parameter temporal
+model is deployable on resource-constrained devices where DistilBERT is
+impractical.
+
+\begin{figure}
+\centering
+\includegraphics[width=0.8\linewidth,height=\textheight,keepaspectratio,alt={F1 versus trainable parameter count. The 27K-parameter temporal LSTM and 66.4M-parameter concatenated DistilBERT bound the accuracy-efficiency Pareto frontier.}]{figures/v3_param_efficiency.png}
+\caption{F1 versus trainable parameter count. The 27K-parameter temporal
+LSTM and 66.4M-parameter concatenated DistilBERT bound the
+accuracy-efficiency Pareto frontier.}
+\end{figure}
+
+\subsection{5.3 What the Autoencoder Ablation
+Reveals}\label{what-the-autoencoder-ablation-reveals}
+
+Replacing the injection-trained GRU encoder with a
+reconstruction-trained autoencoder yields F1 = 0.845, slightly exceeding
+the primary model (F1 = 0.837). This result indicates that the sequence
+LSTM drives temporal detection regardless of whether the turn encoder
+was trained for injection classification. The GRU's injection-detection
+expertise does not transfer to the multi-turn task in a measurable way.
+
+Two explanations are plausible. The injection-trained GRU's
+32-dimensional output may already compress away the features most useful
+for temporal analysis, retaining only an ``injection-likeness'' score
+that the sequence LSTM must work around rather than with. Alternatively,
+the autoencoder's reconstruction objective may preserve richer turn
+representations that happen to be equally informative for temporal
+pattern recognition. Distinguishing these explanations would require
+probing the information content of each encoder's representations, which
+we leave as future work.
+
+This finding tempers the dual-encoder narrative. The architecture's
+value lies in the frozen-encoder-plus-temporal-LSTM decomposition
+itself, not in the specific training objective of the encoder. Any
+encoder that produces meaningful fixed-dimensional turn representations
+appears sufficient for temporal detection.
+
+\subsection{5.4 Limitations}\label{limitations}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Synthetic data}: All conversations generated by Claude Sonnet
+  4.6. Performance on naturally occurring multi-turn attacks is unknown.
+\item
+  \textbf{Residual vocabulary confounds}: BoW classifiers achieve F1
+  \textgreater{} 0.93 on training data. The temporal signal operates on
+  top of this confound.
+\item
+  \textbf{Single model family}: Cross-model generalization (attacks
+  generated by GPT-4, Gemini, open-weight models) is untested.
+\item
+  \textbf{Fixed conversation length}: 6-9 user turns. Behavior on 20+
+  turn conversations is untested.
+\item
+  \textbf{English only}: Non-English injection patterns are not
+  represented.
 \end{itemize}
 
-At ratio 588 (well below 1,500), the Chollet heuristic predicts that \textbf{bag-of-bigrams models should outperform sequence and transformer models}. With relatively few samples per unit of text complexity, simpler models with strong feature engineering (TF-IDF bigrams) capture the discriminative patterns without the overfitting risk inherent in higher-capacity models.
+\subsection{5.5 Future Work}\label{future-work}
 
-This prediction is empirically validated: TF-IDF + RF (F1 = 0.834) outperforms all deep learning models including transformers, confirming that transformers need substantially more training data to outperform simpler approaches on this task.
-
-% ============================================================
-\section{Metric Justification}
-% ============================================================
-
-We report F1 score as the primary metric rather than accuracy. The justification is threefold.
-
-\textbf{Class imbalance renders accuracy misleading.} The dataset is 64\% benign. A majority-class classifier that predicts ``benign'' for every input achieves 64\% accuracy with F1 = 0.0 on the injection class. A stratified random classifier achieves 54\% accuracy with injection-class F1 = 0.358. Neither provides any detection capability
-despite appearing numerically reasonable on accuracy alone.
-
-\textbf{Security cost asymmetry demands balanced precision-recall.} In prompt injection detection, false negatives allow attacks to succeed (security breach), while false positives block legitimate users (usability cost). F1 balances these competing concerns. Accuracy treats all errors equally, which does not reflect the operational reality.
-
-\textbf{F1 enables fair cross-model comparison.} All models operate on the same class distribution. F1 penalizes models that achieve high recall by sacrificing precision (or vice versa), making it a more discriminating metric than accuracy for comparing architectures. ROC-AUC is reported as a secondary threshold-independent metric.
-
-% ============================================================
-\section{Model Architecture and Iteration Plan}
-% ============================================================
-
-\subsection{Iteration 0: Baselines}
-
-TF-IDF (max 10K features, bigrams) fed into Logistic Regression and Random Forest. No deep learning. These establish the performance floor that all subsequent models must exceed.
-
-\subsection{Iterations 1--4: Single-Turn Deep Learning Models}
-
-\begin{table}[H]
-\centering
-\caption{Single-turn model architecture progression.}
-\label{tab:iterations}
-\begin{tabular}{@{}clll@{}}
-\toprule
-Iter & Architecture & Key Feature & Parameters \\
-\midrule
-1 & LSTM(128$\to$64) & Random embeddings & $\sim$2.6M \\
-2 & LSTM(100$\to$64) & GloVe 6B 100d (frozen) & $\sim$2.1M \\
-3 & BiLSTM(128$\to$64) & Bidirectional + dropout (0.3, 0.5) & $\sim$2.9M \\
-4 & BiGRU(128$\to$64) & GRU comparison & $\sim$2.6M \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-All models use: Adam optimizer, BCELoss, early stopping (patience = 5), ReduceLROnPlateau, gradient clipping ($\text{max\_norm} = 1.0$).
-
-\subsection{Iterations 4b--4c: Transformer Comparison}
-
-Two transformer architectures provide a controlled comparison against LSTM/GRU:
-
-\begin{table}[H]
-\centering
-\caption{Transformer architectures for single-turn comparison.}
-\begin{tabular}{@{}cllr@{}}
-\toprule
-Iter & Architecture & Key Feature & Parameters \\
-\midrule
-4b & Custom Transformer Encoder & 2-layer, 4-head self-attention & $\sim$2.8M \\
-4c & DistilBERT (frozen body) & Transfer learning, pretrained LM & $\sim$99K trainable \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-The custom transformer (Iter 4b) provides a controlled comparison: same vocabulary, same embedding dimension, similar parameter count. The only difference is self-attention vs.\ recurrent gates. DistilBERT (Iter 4c) tests whether pretrained language understanding transfers to the security domain even with a frozen body.
-
-\subsection{Iteration 5: Multi-Turn Classifier}
-
-Dual-encoder architecture:
-\begin{enumerate}[nosep]
-    \item \textbf{Turn encoder} (frozen GRU from Iter 4): encodes each turn into a 32-dim vector.
-    \item \textbf{Sequence LSTM} (64-dim hidden): processes turn vectors temporally.
-    \item \textbf{Classification head}: Dense(64$\to$32$\to$1) with dropout.
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Cross-domain transfer}: Test on multi-turn attack data from
+  different domains
+\item
+  \textbf{Real-world validation}: Deploy as a secondary filter behind
+  production AI systems
+\item
+  \textbf{Online detection}: Classify after each new turn for streaming
+  inference
+\item
+  \textbf{Formal safety analysis}: Investigate whether LSTM hidden-state
+  trajectories satisfy the Markov property for connection to formal
+  verification approaches
+\item
+  \textbf{Longer contexts}: Extend to 20-50 turn conversations common in
+  production
 \end{enumerate}
 
-Only $\sim$27,000 parameters are trainable (the sequence LSTM and classification head). The turn encoder's 2.6M parameters are frozen.
-
-\subsection{Iteration 6: Attention}
-
-Additive attention over sequence LSTM hidden states replaces final-hidden-state-only classification. This provides interpretability: attention weights reveal which turns drive the classification decision.
-
-\subsection{Iteration 7: Threshold Tuning}
-
-Sweep thresholds 0.01--0.99 on the attention model. Optimize for F1, 95\% recall, and 95\% precision operating points.
-
-% ============================================================
-\section{Results}
-% ============================================================
-
-\subsection{Single-Turn Results}
-
-\begin{table}[H]
-\centering
-\caption{Single-turn model comparison on the test set (11,009 samples).}
-\label{tab:single_results}
-\begin{tabular}{@{}llcccc@{}}
-\toprule
-Model & Iter & F1 & Precision & Recall & ROC-AUC \\
-\midrule
-Stratified random (chance) & -- & 0.358 & 0.358 & 0.358 & 0.500 \\
-TF-IDF + LR & 0 & 0.814 & 0.892 & 0.748 & 0.939 \\
-\textbf{TF-IDF + RF} & \textbf{0} & \textbf{0.834} & \textbf{0.904} & \textbf{0.773} & \textbf{0.945} \\
-LSTM & 1 & 0.814 & 0.887 & 0.753 & 0.942 \\
-GloVe LSTM & 2 & 0.813 & 0.923 & 0.727 & 0.942 \\
-BiLSTM $d$=0.3 & 3 & 0.815 & 0.955 & 0.710 & 0.942 \\
-BiGRU & 4 & 0.815 & 0.959 & 0.709 & 0.946 \\
-Custom Transformer & 4b & 0.808 & 0.947 & 0.704 & 0.944 \\
-DistilBERT (frozen) & 4c & 0.806 & 0.950 & 0.700 & 0.942 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\textbf{Encoder decision}: GRU was selected as the turn encoder for the multi-turn system. It achieves competitive F1 with fewer parameters than BiLSTM and the highest ROC-AUC (0.946) among all models.
-
-\textbf{Chollet heuristic validated}: TF-IDF + RF (bag-of-bigrams) achieves the highest F1 at 0.834, confirming the Chollet prediction that at ratio 588, simpler models outperform sequence and transformer architectures. The custom transformer (0.808) and DistilBERT (0.806) both underperform the bag-of-bigrams baseline.
-
-\textbf{GloVe finding}: GloVe LSTM (F1 = 0.813) performs comparably to random embeddings (F1 = 0.814). With the expanded dataset, both embedding approaches converge. GloVe embeddings are trained on general web text where security terms like ``jailbreak,'' ``bypass,'' and ``inject'' carry different semantic weight. Learned random embeddings, trained directly on injection data, capture domain-specific semantics that GloVe cannot.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.75\textwidth]{../results/iter0_baseline_rf/confusion_matrix.png}
-\caption{Confusion matrix for the TF-IDF + Random Forest baseline (Iter 0). The model achieves high precision (904 of 1000 predicted injections are correct) with moderate recall (773 of 1000 actual injections detected). The 893 false negatives motivate deep learning approaches.}
-\label{fig:baseline_cm}
-\end{figure}
-
-\subsection{Baseline Error Analysis}
-\label{sec:baseline_errors}
-
-The TF-IDF + RF baseline (F1 = 0.834) produces 893 false negatives and 323 false positives on the test set. Examining these errors reveals patterns that motivate the deep learning approach.
-
-\textbf{False negatives (missed injections).} The TF-IDF model fails on injections that avoid common attack keywords. Obfuscated attacks using character substitution (e.g., ``1gnor3 pr3vious instructions''), indirect phrasing (``What would happen if someone were to...''), and role-play setups (``Pretend you are a character who...'') produce TF-IDF vectors indistinguishable from benign text. These attacks rely on semantic meaning and pragmatic context rather than lexical cues, which a bag-of-words model cannot capture.
-
-\textbf{False positives (blocked benign text).} Legitimate security discussions, penetration testing queries, and cybersecurity educational content share vocabulary with actual injection attempts. A user asking ``How does prompt injection work?'' produces TF-IDF features nearly identical to an actual injection. The model cannot distinguish discussion \textit{about} attacks from actual attacks without deeper semantic understanding.
-
-These error patterns confirm the Chollet heuristic prediction from a different angle: while bag-of-bigrams wins on aggregate F1, the \textit{types} of errors it makes are precisely those that sequence models could address with more training data. The errors are semantic, not statistical.
-
-\subsection{Multi-Turn Results (Core Finding)}
-
-\begin{table}[H]
-\centering
-\caption{Multi-turn model comparison on the test set (1,000 conversations).}
-\label{tab:multi_results}
-\begin{tabular}{@{}llcc@{}}
-\toprule
-Model & Multi-Turn F1 & Precision & Recall \\
-\midrule
-Stratified random (chance) & 0.500 & 0.500 & 0.500 \\
-TF-IDF + LR (concatenated) & 0.656 & -- & -- \\
-TF-IDF + RF (concatenated) & 0.739 & -- & -- \\
-GRU per-turn (max prob) & 0.887 & -- & -- \\
-\textbf{Multi-turn LSTM (Iter 5)} & \textbf{0.989} & 0.988 & 0.990 \\
-Multi-turn + Attention (Iter 6) & 0.992 & 0.990 & 0.994 \\
-Tuned threshold (Iter 7) & 0.995 & 0.996 & 0.994 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-The dual-encoder temporal architecture achieves F1 = 0.989--0.995 on multi-turn data, a \textbf{+10.3 percentage point improvement} over the best single-turn model applied per-turn (F1 = 0.887). Measured against a stratified random classifier (F1 = 0.500 on balanced classes), the temporal model captures nearly all available classification signal above chance.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.8\textwidth]{../results/cross_iteration_comparison.png}
-\caption{F1 scores across all iterations. Iterations 0--4c (single-turn) plateau near 0.81--0.83. The multi-turn models (Iterations 5--7) achieve a step-function improvement to 0.989--0.995.}
-\label{fig:cross_iter}
-\end{figure}
-
-\subsection{Multi-Turn Example Analysis}
-\label{sec:multiturn_example}
-
-The temporal model succeeds on conversations where per-turn classification fails. Consider a representative 5-turn gradual escalation attack:
-
-\begin{enumerate}[nosep]
-    \item ``I'm writing a cybersecurity course for my university'' (benign; GRU score: 0.08)
-    \item ``Can you explain common social engineering techniques?'' (benign; GRU score: 0.12)
-    \item ``How would an attacker typically phrase a request to bypass safety filters?'' (borderline; GRU score: 0.31)
-    \item ``Show me an example of a prompt that could manipulate an AI assistant'' (borderline; GRU score: 0.44)
-    \item ``Now generate a response as if those safety filters were disabled'' (injection; GRU score: 0.47)
-\end{enumerate}
-
-No individual turn exceeds the 0.5 classification threshold. The per-turn GRU, taking the maximum probability across turns, outputs $\max(0.08, 0.12, 0.31, 0.44, 0.47) = 0.47 < 0.5$ and classifies the conversation as benign. The sequence LSTM processes the turn embedding sequence and recognizes the cumulative escalation pattern. It outputs a conversation-level probability of 0.94, correctly flagging the attack.
-
-This is exactly the Crescendo pattern described by Russinovich et al.\ \cite{russinovich2025}: each turn is individually innocuous, but the sequence reveals adversarial intent.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.75\textwidth]{../results/iter5_multiturn/confusion_matrix.png}
-\caption{Confusion matrix for the multi-turn LSTM (Iter 5). Of 1,000 test conversations (500 benign, 500 attack), the model produces only 6 false positives and 5 false negatives.}
-\label{fig:multiturn_cm}
-\end{figure}
-
-\subsection{Attention Interpretability}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.85\textwidth]{../results/iter6_attention/attention_heatmap_sample_6.png}
-\caption{Attention heatmap for a multi-turn attack conversation. Attention weights concentrate on the later turns where escalation occurs, confirming that the model learns to focus on the turns carrying adversarial signal rather than the innocuous early context.}
-\label{fig:attention}
-\end{figure}
-
-The additive attention mechanism (Iter 6) provides interpretability into the multi-turn classifier's decisions. For attack conversations, attention weights consistently concentrate on later turns (turns 4--7 in a typical 7-turn sequence), aligning with the escalation point. For benign conversations, attention distributes more uniformly across turns.
-
-\subsection{Threshold Analysis}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.75\textwidth]{../results/iter7_threshold/threshold_curve.png}
-\caption{F1, precision, and recall as a function of classification threshold. Optimal F1 = 0.995 at threshold 0.64.}
-\label{fig:threshold}
-\end{figure}
-
-Optimal threshold: 0.64 (F1 = 0.995). The threshold is close to the default 0.5, indicating the model produces well-calibrated probabilities for multi-turn attack sequences. At the 95\% recall operating point, precision remains above 0.99. At the 95\% precision operating point, recall remains above 0.99.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.75\textwidth]{../results/iter7_threshold/confusion_matrix.png}
-\caption{Confusion matrix at optimal threshold (0.64). Only 2 false positives and 3 false negatives on 1,000 test conversations.}
-\label{fig:threshold_cm}
-\end{figure}
-
-\subsection{Statistical Significance Discussion}
-\label{sec:significance}
-
-The improvement from Iter 5 (F1 = 0.989) to Iter 7 (F1 = 0.995) corresponds to approximately 6 additional correct predictions on a 1,000-sample test set. On a test set of this size, the 95\% confidence interval for F1 is approximately $\pm$0.01. The difference between 0.989 and 0.995 falls within this interval and is \textit{not} statistically significant.
-
-The meaningful finding is the \textbf{+10.3 percentage point structural gap} between per-turn classification (F1 = 0.887) and temporal classification (F1 = 0.989). This gap reflects an architectural capability difference, not a tuning artifact. The per-turn model \textit{cannot} detect distributed attacks regardless of threshold, because it processes turns independently.
-
-The 0.995 ceiling likely reflects synthetic data limitations rather than model capacity. Our template-based generation produces conversations with consistent structural patterns that a sequence model can learn to near-perfection. Real-world distributed attacks, with more diverse and sophisticated escalation strategies, would likely produce lower absolute F1 scores while preserving the structural advantage of temporal modeling.
-
-% ============================================================
-\section{Analytical Analysis}
-% ============================================================
-
-\subsection{Overfitting and Underfitting Detection}
-\label{sec:overfitting}
-
-Training curves across all iterations reveal moderate train-validation gaps that are consistent with mild overfitting, never severe.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.75\textwidth]{../results/iter1_lstm/training_curves.png}
-\caption{Training curves for LSTM (Iter 1). Validation loss stabilizes around epoch 8 while training loss continues to decrease, indicating moderate overfitting. Early stopping triggers at epoch 13.}
-\label{fig:lstm_curves}
-\end{figure}
-
-\textbf{No severe underfitting.} All models achieve validation loss well below 0.5 by epoch 3, confirming sufficient model capacity. The LSTM (Iter 1) reaches validation loss of 0.32; the GRU (Iter 4) reaches 0.30. These values are far from the random baseline loss of 0.69 ($-\ln(0.5)$), indicating that all architectures learn meaningful representations.
-
-\textbf{Early stopping prevented runaway overfitting.} Without early stopping, training loss continues to decrease while validation loss inflects upward. Early stopping (patience = 5) consistently triggers between epochs 10--15, halting training before the validation loss increases by more than 0.02 from its minimum.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.75\textwidth]{../results/iter4_gru/training_curves.png}
-\caption{Training curves for GRU (Iter 4). The train-validation gap is narrower than the LSTM, suggesting that the GRU's simpler gating mechanism provides implicit regularization. Best validation loss: 0.30 at epoch 10.}
-\label{fig:gru_curves}
-\end{figure}
-
-\textbf{Dropout 0.3 vs.\ 0.5 comparison (Iter 3).} The BiLSTM was trained with both dropout rates. Dropout 0.3 achieves F1 = 0.815 with recall = 0.710. Dropout 0.5 achieves F1 = 0.813 with recall = 0.704, precision = 0.961. The higher dropout rate slightly reduces recall (fewer true positives) without improving precision, indicating that dropout 0.5 over-regularizes the already-moderate-capacity model. Dropout 0.3 was selected for subsequent iterations.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.75\textwidth]{../results/iter4b_transformer/training_curves.png}
-\caption{Training curves for the custom transformer encoder (Iter 4b). Despite self-attention's higher capacity, the training dynamics are similar to the RNN models. Validation loss plateaus early, and the train-validation gap remains comparable.}
-\label{fig:transformer_curves}
-\end{figure}
-
-\subsection{Convergence Comparison}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.8\textwidth]{../results/rnn_convergence_comparison.png}
-\caption{Convergence comparison across RNN architectures. All models reach near-optimal validation performance within 10 epochs. The GRU converges fastest with the smallest final train-validation gap.}
-\label{fig:convergence}
-\end{figure}
-
-\subsection{Representation Space Analysis}
-
-Figure~\ref{fig:manifold} visualizes the GRU encoder's progressive manifold separation via t-SNE projections of 2,000 test samples at three network stages. The raw embedding space shows substantial class overlap. The bidirectional GRU transforms this into a more separable representation, and the dense projection further refines the clustering. This progressive untangling---analogous to the manifold transformations described by Olah~\cite{olah2014}---is what enables the frozen encoder to serve as an effective feature extractor for the downstream multi-turn classifier.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.95\textwidth]{../results/embedding_space_manifold.png}
-\caption{t-SNE projections of 2,000 test samples at three stages through the GRU encoder. The progressive separation from intermingled (embedding layer) to clustered (dense encoding) demonstrates the manifold untangling that makes the encoder effective as a frozen feature extractor.}
-\label{fig:manifold}
-\end{figure}
-
-\subsection{AUC Comparison}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.8\textwidth]{../results/auc_comparison.png}
-\caption{ROC-AUC comparison across all models. The GRU (Iter 4) achieves the highest single-turn AUC at 0.946. Multi-turn models achieve AUC $>$ 0.998.}
-\label{fig:auc}
-\end{figure}
-
-\subsection{Error Pattern Analysis}
-
-Across all single-turn models, the dominant error type is false negatives (missed injections). The GRU (Iter 4) produces 1,146 false negatives vs.\ 120 false positives on 11,009 test samples, a ratio of 9.6:1. This asymmetry is consistent across architectures:
-
-\begin{table}[H]
-\centering
-\caption{False negative to false positive ratio across single-turn models.}
-\begin{tabular}{@{}lccc@{}}
-\toprule
-Model & FN & FP & FN:FP Ratio \\
-\midrule
-TF-IDF + LR & 990 & 358 & 2.8:1 \\
-TF-IDF + RF & 893 & 323 & 2.8:1 \\
-LSTM & 974 & 377 & 2.6:1 \\
-GloVe LSTM & 1,074 & 239 & 4.5:1 \\
-BiLSTM $d$=0.3 & 1,142 & 131 & 8.7:1 \\
-GRU & 1,146 & 120 & 9.6:1 \\
-Custom Transformer & 1,165 & 155 & 7.5:1 \\
-DistilBERT & 1,180 & 144 & 8.2:1 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-The deep learning models trade false positives for false negatives compared to the baselines. The GRU achieves 95.9\% precision at the cost of 70.9\% recall. This high-precision/lower-recall profile reflects the class imbalance: with 64\% benign samples, the models learn conservative decision boundaries that favor the majority class.
-
-The multi-turn architecture inverts this pattern. The temporal LSTM (Iter 5) achieves 98.8\% precision and 99.0\% recall, with only 6 false positives and 5 false negatives. The temporal signal provides strong enough evidence to overcome the conservative bias.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.85\textwidth]{../results/final_analysis.png}
-\caption{Final analysis summary across all iterations, showing the progression from baselines through single-turn deep learning to the multi-turn temporal architecture.}
-\label{fig:final_analysis}
-\end{figure}
-
-% ============================================================
-\section{Discussion}
-% ============================================================
-
-\subsection{Why Multi-Turn Works}
-
-The dual-encoder architecture succeeds because it separates two concerns:
-\begin{enumerate}[nosep]
-    \item \textbf{What does each turn say?} The turn encoder (frozen GRU) is already competent at single-turn detection.
-    \item \textbf{How do turns relate over time?} The sequence LSTM learns temporal patterns: escalation gradients, context-priming followed by exploitation, and cumulative constraint layering.
-\end{enumerate}
-
-The frozen turn encoder prevents catastrophic forgetting while the sequence LSTM learns to recognize escalation, persona establishment, and cumulative constraint patterns.
-
-\subsection{LSTM Gate Dynamics}
-
-Figure~\ref{fig:gates} visualizes the sequence LSTM's gate activations across conversation turns for a sample attack and benign conversation. The forget, input, and output gates reveal how the model processes temporal context. In the attack conversation, the forget gate maintains high activation, retaining accumulated context as the attack escalates. The input gate shows elevated activation on turns that introduce risk-relevant information. In the benign conversation, gate activations are more uniform, reflecting the absence of escalation patterns.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.85\textwidth]{../results/gate_activations_heatmap.png}
-\caption{Mean LSTM gate activations (averaged over 64 hidden units) across conversation turns. Left: an attack conversation with elevated input gate activity on escalation turns. Right: a benign conversation with more uniform gate dynamics.}
-\label{fig:gates}
-\end{figure}
-
-\subsection{Loss Landscape Analysis}
-
-Following the technique of Li et al.~\cite{li2018landscape}, Figure~\ref{fig:landscape} visualizes the loss surface of the multi-turn attention model. Two random directions in the 29,281-dimensional trainable parameter space were sampled with filter-wise normalization, and BCE loss was evaluated on a $25 \times 25$ grid. The frozen turn encoder outputs were pre-computed, so only the sequence LSTM, attention, and classification head were perturbed.
-
-The smooth, bowl-shaped landscape indicates the optimizer found a well-conditioned minimum. The approximately circular contours (Figure~\ref{fig:landscape_contour}) suggest isotropic curvature near the minimum, meaning the model is not in a narrow, overfitting-prone valley but rather a broad basin of good solutions.
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.7\textwidth]{../results/loss_landscape_3d.png}
-\caption{3D loss landscape of the multi-turn attention model ($\sim$29K trainable parameters). The smooth bowl shape indicates a well-conditioned minimum. The red star marks the trained parameters.}
-\label{fig:landscape}
-\end{figure}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.6\textwidth]{../results/loss_landscape_contour.png}
-\caption{Contour view of the loss landscape. Approximately circular contours indicate isotropic curvature near the minimum.}
-\label{fig:landscape_contour}
-\end{figure}
-
-\subsection{Iterative Refinement Summary}
-
-The project followed a deliberate iterative progression:
-
-\begin{enumerate}[nosep]
-    \item \textbf{Baselines (Iter 0)}: Established F1 = 0.834 performance floor with TF-IDF + RF.
-    \item \textbf{LSTM (Iter 1)}: Matched baseline at F1 = 0.814, confirming the Chollet prediction that deep learning would not immediately surpass bag-of-bigrams at this data scale.
-    \item \textbf{GloVe (Iter 2)}: Pretrained embeddings provided no benefit (F1 = 0.813), motivating domain-specific learned embeddings.
-    \item \textbf{BiLSTM + Dropout (Iter 3)}: Bidirectionality and regularization provided marginal gains (F1 = 0.815). Dropout 0.5 over-regularized; 0.3 was selected.
-    \item \textbf{GRU (Iter 4)}: Matched BiLSTM performance with fewer parameters (F1 = 0.815, ROC-AUC = 0.946). Selected as the turn encoder.
-    \item \textbf{Transformers (Iter 4b--4c)}: Both underperformed bag-of-bigrams, confirming data insufficiency. Custom transformer F1 = 0.808; DistilBERT F1 = 0.806.
-    \item \textbf{Multi-turn LSTM (Iter 5)}: Step-function improvement to F1 = 0.989, validating the temporal hypothesis.
-    \item \textbf{Attention (Iter 6)}: Minor F1 gain to 0.992 with interpretability via attention weights.
-    \item \textbf{Threshold tuning (Iter 7)}: Optimized to F1 = 0.995 at threshold 0.64.
-\end{enumerate}
-
-Each iteration was motivated by a specific hypothesis. Negative results (GloVe, transformers) were as informative as positive ones.
-
-\subsection{Limitations}
-
-\begin{itemize}[nosep]
-    \item \textbf{Synthetic data}: Multi-turn conversations are generated from single-turn data using template-based strategies. Real-world distributed attacks may be more sophisticated.
-    \item \textbf{English only}: All training data is English. Non-English injection patterns are not represented.
-    \item \textbf{Known patterns}: Training data skews toward published attack types. Novel social engineering approaches may evade detection.
-    \item \textbf{Fixed architecture}: 10-turn maximum with fixed 256-token turns. Real conversations vary more widely.
-    \item \textbf{Source bias}: 54.5\% of training data comes from a single source (see Section~\ref{sec:bias}).
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\section{6. Reproducibility}\label{reproducibility}
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Seed}: 42 for all random operations (Python, NumPy, PyTorch,
+  cuDNN)
+\item
+  \textbf{Platform}: NVIDIA Jetson Orin AGX, PyTorch 2.8.0, Python 3.12
+\item
+  \textbf{Data}: Single-turn from HuggingFace (Apache 2.0 / MIT).
+  Multi-turn generated via Anthropic API.
+\item
+  \textbf{Code}: Full source in \texttt{src/}, evaluation in
+  \texttt{scripts/}, results in \texttt{results/v3\_evaluation/}
+\item
+  \textbf{Hardware}: 64GB RAM, Ampere GPU (sm\_87), CUDA 12.6. Training
+  run on RunPod A100.
+\item
+  \textbf{Statistical methods}: 1000-sample bootstrap for CIs, paired
+  one-sided bootstrap for significance tests.
 \end{itemize}
 
-\subsection{Future Work}
-
-\begin{enumerate}[nosep]
-    \item Real-world multi-turn datasets from AI safety research teams.
-    \item Transformer-based turn encoders (BERT/DeBERTa) for richer representations.
-    \item Online detection: classify incrementally as each turn arrives.
-    \item Cross-lingual detection to address multilingual attacks.
-    \item Adversarial robustness testing against adversaries aware of the architecture.
-\end{enumerate}
-
-% ============================================================
-\section{Reproducibility}
-% ============================================================
-
-\begin{itemize}[nosep]
-    \item \textbf{Seed}: 42 for all random operations (Python, NumPy, PyTorch, cuDNN).
-    \item \textbf{Platform}: NVIDIA Jetson Orin AGX, PyTorch 2.8.0, Python 3.12.
-    \item \textbf{Data}: All datasets from HuggingFace (Apache 2.0 / MIT / HuggingFace licenses).
-    \item \textbf{Code}: Full source in \texttt{src/}, execution prompts in \texttt{prompts/}.
-    \item \textbf{Hardware}: 64GB RAM, Ampere GPU (sm\_87), CUDA 12.6.
-\end{itemize}
-
-All model weights, metrics, and plots are saved to \texttt{models/} and \texttt{results/} directories.
-
-% ============================================================
-% References
-% ============================================================
-\renewcommand{\refname}{}
-\addcontentsline{toc}{section}{References}
-\section*{References}
-\vspace{-1.5em}
-
-\begin{thebibliography}{99}
-
-\bibitem{protectai2024}
-ProtectAI. \textit{DeBERTa-v3-base-prompt-injection-v2}. HuggingFace Hub, 2024. \url{https://huggingface.co/protectai/deberta-v3-base-prompt-injection-v2}.
-
-\bibitem{injecguard2024}
-Z.~Wang, Y.~Liu, and C.~Li. InjecGuard: Benchmarking and mitigating over-confidence in LLM prompt injection guard models. \textit{arXiv preprint arXiv:2410.22770}, 2024.
-
-\bibitem{vassilev2025}
-A.~Vassilev. Towards a theoretical framework for the security of large language models. \textit{NIST AI Report}, 2025.
-
-\bibitem{russinovich2025}
-M.~Russinovich, A.~Salem, and R.~Eldan. Great, now write an article about that: The crescendo multi-turn LLM jailbreak attack. In \textit{Proceedings of USENIX Security Symposium}, 2025.
-
-\bibitem{emnlp2025fitd}
-Y.~Zhang, X.~Chen, and L.~Wang. Foot-in-the-door: Multi-turn jailbreaking of large language models via compliance momentum. In \textit{Proceedings of EMNLP}, 2025.
-
-\bibitem{chollet2021}
-F.~Chollet. \textit{Deep Learning with Python}. Manning Publications, 2nd edition, 2021.
-
-\bibitem{hochreiter1997}
-S.~Hochreiter and J.~Schmidhuber. Long short-term memory. \textit{Neural Computation}, 9(8):1735--1780, 1997.
-
-\bibitem{cho2014}
-K.~Cho, B.~van Merri\"{e}nboer, C.~Gulcehre, D.~Bahdanau, F.~Bougares, H.~Schwenk, and Y.~Bengio. Learning phrase representations using RNN encoder-decoder for statistical machine translation. In \textit{Proceedings of EMNLP}, 2014.
-
-\bibitem{bahdanau2015}
-D.~Bahdanau, K.~Cho, and Y.~Bengio. Neural machine translation by jointly learning to align and translate. In \textit{Proceedings of ICLR}, 2015.
-
-\bibitem{pennington2014}
-J.~Pennington, R.~Socher, and C.~Manning. GloVe: Global vectors for word representation. In \textit{Proceedings of EMNLP}, 2014.
-
-\bibitem{vaswani2017}
-A.~Vaswani, N.~Shikhar, N.~Parmar, J.~Uszkoreit, L.~Jones, A.~Gomez, \L.~Kaiser, and I.~Polosukhin. Attention is all you need. In \textit{Advances in Neural Information Processing Systems}, 2017.
-
-\bibitem{sanh2019}
-V.~Sanh, L.~Debut, J.~Chaumond, and T.~Wolf. DistilBERT, a distilled version of BERT: Smaller, faster, cheaper and lighter. In \textit{NeurIPS Workshop on Energy Efficient Machine Learning and Cognitive Computing}, 2019.
-
-\bibitem{perez2022}
-F.~Perez and I.~Ribas. Ignore this title and HackAPrompt: Exposing systemic weaknesses of LLMs through a global scale prompt hacking competition. In \textit{Proceedings of EMNLP}, 2023.
-
-\bibitem{greshake2023}
-K.~Greshake, S.~Abdelnabi, S.~Mishra, C.~Endres, T.~Holz, and M.~Fritz. Not what you've signed up for: Compromising real-world LLM-integrated applications with indirect prompt injection. In \textit{Proceedings of AISec Workshop at CCS}, 2023.
-
-\bibitem{olah2014}
-C.~Olah. Neural networks, manifolds, and topology. \textit{colah's blog}, 2014. \url{https://colah.github.io/posts/2014-03-NN-Manifolds-Topology/}.
-
-\bibitem{li2018landscape}
-H.~Li, Z.~Xu, G.~Taylor, C.~Studer, and T.~Goldstein. Visualizing the loss landscape of neural nets. In \textit{Advances in Neural Information Processing Systems}, 2018.
-
-\end{thebibliography}
+All model weights, metrics, predictions (.npz), and plots saved to
+\texttt{models/} and \texttt{results/} directories.
 
 \end{document}
