@@ -1,31 +1,14 @@
-# Data files (too large for git)
-data/raw/
-data/embeddings/
-data/processed/*.csv
-data/synthetic/*.json
-data/synthetic_v2/
-data/synthetic_v3/
-
-# Model weights (top-level only, not src/models/)
-/models/
-
-# Results (regenerated from notebook, top-level only)
-/results/
-
-# WandB
-wandb/
-
-# Logs
-*.log
-
-# Secrets
-.env
-
 # Python
 __pycache__/
 *.pyc
 *.pyo
 .ipynb_checkpoints/
+
+# Environment
+.env
+
+# Logs
+*.log
 
 # OS
 .DS_Store
@@ -34,9 +17,3 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
-
-
-# Claude
-CLAUDE.md
-prompts/
-COMP*
