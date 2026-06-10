@@ -32,7 +32,6 @@ This project follows strict conventions to ensure reproducibility and consistenc
 | `scripts/` | Standalone utility scripts (data generation, evaluation, RunPod) |
 | `tests/` | Pytest test suite |
 | `notebooks/` | Jupyter notebook with full walkthrough |
-| `report/` | Academic report (LaTeX + PDF) and presentation |
 
 ## Testing
 

@@ -29,3 +29,6 @@ video/
 
 # Large multi-turn dataset JSON (hosted on Zenodo; never commit the 140MB+ files)
 data/hf_dataset/multiturn_*.json
+
+# Course-assignment report and slides (superseded by the external design doc; kept local)
+report/

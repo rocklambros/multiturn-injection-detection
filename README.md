@@ -338,10 +338,6 @@ flowchart TD
     end
 
     subgraph DL["Deliverables"]
-        RPT["report/final_report.tex<br/>LaTeX source"]
-        PDF["report/final_report.pdf<br/>Compiled report"]
-        PRES["report/presentation.md<br/>10-minute deck"]
-        GAMMA["report/gamma_prompt.md<br/>Gamma presentation"]
         HTML["notebooks/multiturn_injection_detection.html<br/>Static notebook export"]
     end
 
@@ -351,10 +347,6 @@ flowchart TD
     RES --> NB
     MOD --> NB
     NB --> HTML
-    RES --> RPT
-    RPT --> PDF
-    RES --> PRES
-    PRES --> GAMMA
 
     style NB fill:#4CAF50,color:#fff
     style RES fill:#FF9800,color:#fff
@@ -445,12 +437,6 @@ multiturn-injection-detection/
 │   └── synthetic/                     # Generated multi-turn JSONs
 ├── models/                            # Saved weights (.pt) + vocab.json
 ├── results/                           # Metrics (JSON) + plots (PNG)
-├── report/
-│   ├── final_report.tex               # LaTeX source
-│   ├── final_report.pdf               # Compiled report
-│   ├── final_report.md                # Markdown version
-│   ├── presentation.md                # Slide content
-│   └── gamma_prompt.md                # Gamma presentation prompt
 ├── docs/
 │   ├── ARCHITECTURE.md                # Architecture decisions
 │   └── INSTALLATION.md                # Setup guide
