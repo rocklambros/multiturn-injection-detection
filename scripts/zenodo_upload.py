@@ -132,6 +132,9 @@ def main():
                         help="Validate inputs and print the plan; make no API calls")
     parser.add_argument("--publish-deposition", metavar="ID",
                         help="Publish an existing draft deposition by id (irreversible)")
+    parser.add_argument("--new-version", metavar="RECORD_ID",
+                        help="Create a new version of a published record and add the given files "
+                             "(leaves a draft; publish separately)")
     args = parser.parse_args()
 
     token = os.environ.get("ZENODO_TOKEN")
@@ -157,8 +160,38 @@ def main():
         print(f"Record: {result.get('links', {}).get('record_html', '?')}")
         return
 
+    # New-version path: add files to a published record via a fresh draft version.
+    if args.new_version:
+        if not args.files:
+            sys.exit("ERROR: --new-version needs at least one file to add.")
+        paths_nv = [Path(f) for f in args.files]
+        missing_nv = [str(p) for p in paths_nv if not p.is_file()]
+        if missing_nv:
+            sys.exit("ERROR: files not found:\n  " + "\n  ".join(missing_nv))
+        if args.dry_run:
+            print(f"[dry-run] would create a new version of record {args.new_version} on {where} "
+                  f"and add {len(paths_nv)} file(s)")
+            return
+        print(f"Creating new version of record {args.new_version} on {where}...")
+        nv = _request("POST",
+                      f"{base}/deposit/depositions/{args.new_version}/actions/newversion",
+                      token)
+        draft_url = nv["links"]["latest_draft"]
+        draft_id = draft_url.rstrip("/").split("/")[-1]
+        draft = _request("GET", f"{base}/deposit/depositions/{draft_id}", token)
+        bucket = draft["links"]["bucket"]
+        print(f"  new draft id: {draft_id}")
+        for p in paths_nv:
+            _upload_file(bucket, p, token)
+        print("\nNEW-VERSION DRAFT READY (not published).")
+        print(f"  Draft id: {draft_id}")
+        print(f"  Review/edit: {draft['links'].get('html', '?')}")
+        print(f"  Publish with: python scripts/zenodo_upload.py"
+              f"{' --sandbox' if args.sandbox else ''} --publish-deposition {draft_id}")
+        return
+
     if not args.files:
-        sys.exit("ERROR: provide at least one file to upload (or --publish-deposition).")
+        sys.exit("ERROR: provide at least one file to upload (or --publish-deposition / --new-version).")
 
     paths = [Path(f) for f in args.files]
     missing = [str(p) for p in paths if not p.is_file()]

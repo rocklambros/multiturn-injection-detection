@@ -464,14 +464,15 @@ multiturn-injection-detection/
 
 ## Published Artifacts
 
-Pre-processed data and trained model weights are included directly in this repository:
+The datasets and trained model weights are archived on Zenodo (anonymized for review): **DOI [10.5281/zenodo.20628935](https://doi.org/10.5281/zenodo.20628935)** (concept DOI; resolves to the latest version). Small supporting files are included directly in this repository.
 
 | Artifact | Location | Contents |
 |----------|----------|----------|
-| **Dataset** | [`data/hf_dataset/`](data/hf_dataset/) | v3 shared-prefix multi-turn conversations (27K) and supporting JSON (intents, topic partition, generation stats, gate results) |
-| **Model** | [`models/`](models/) | Trained GRU encoder, multi-turn LSTM+attention, DistilBERT concat/hierarchical, ablation variants, vocabulary |
+| **Multi-turn dataset** | [Zenodo](https://doi.org/10.5281/zenodo.20628935) · [`data/hf_dataset/`](data/hf_dataset/) (supporting JSON) | v3 shared-prefix multi-turn conversations (27K, train/val/test) plus intents, topic partition, generation stats, gate results |
+| **Single-turn dataset** | [Zenodo](https://doi.org/10.5281/zenodo.20628935) | 73,390 cleaned single-turn samples from 8 public datasets (train/val/test CSVs); regenerable bit-for-bit via `python -m src.data.download && python -m src.data.download_extra && python -m src.data.clean` |
+| **Model weights** | [Zenodo](https://doi.org/10.5281/zenodo.20628935) | Trained GRU encoder, multi-turn LSTM+attention, DistilBERT concat/hierarchical, ablation variants, vocabulary |
 
-The large dataset JSON and model weights are stored with Git LFS.
+The datasets and model weights exceed practical Git limits and the anonymized review mirror does not resolve Git LFS, so they are distributed via Zenodo rather than committed.
 
 ---
 
