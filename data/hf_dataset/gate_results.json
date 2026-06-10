@@ -1,0 +1,51 @@
+{
+  "unigram_bow": {
+    "f1_mean": 0.9377234324946663,
+    "f1_std": 0.002614883537814793,
+    "threshold": 0.6,
+    "pass": false,
+    "action": "REJECT"
+  },
+  "bigram_bow": {
+    "f1_mean": 0.9454167159799203,
+    "f1_std": 0.002816018598513224,
+    "threshold": 0.65,
+    "pass": false,
+    "action": "REJECT"
+  },
+  "first_turn_only": {
+    "f1_mean": 0.35436171503561964,
+    "f1_std": 0.015329819065592552,
+    "threshold": 0.58,
+    "pass": true,
+    "action": "REJECT"
+  },
+  "last_turn_only": {
+    "f1_mean": 0.9631615063405775,
+    "f1_std": 0.0032678925745095485,
+    "threshold": 0.65,
+    "pass": false,
+    "action": "WARNING"
+  },
+  "conversation_length": {
+    "f1_mean": 0.4818183970636987,
+    "f1_std": 0.1907926482862017,
+    "threshold": 0.55,
+    "pass": true,
+    "action": "REJECT"
+  },
+  "max_vote_bow": {
+    "f1_mean": 0.6837623803266056,
+    "f1_std": 0.0008716893323278237,
+    "threshold": 0.7,
+    "pass": true,
+    "action": "REJECT"
+  },
+  "mean_vote_bow": {
+    "f1_mean": 0.9262668587544027,
+    "f1_std": 0.006164474775573888,
+    "threshold": 0.65,
+    "pass": false,
+    "action": "REJECT"
+  }
+}

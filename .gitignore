@@ -17,3 +17,12 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# HuggingFace download staging area (never commit; artifacts live in data/ and models/)
+hf_staging/
+
+# Presentation video/PDF (kept local; excluded from the review artifact to avoid author de-anonymization)
+video/
+
+# Local Python venv for eval regeneration
+.venv/

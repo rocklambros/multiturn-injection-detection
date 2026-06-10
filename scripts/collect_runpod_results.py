@@ -18,7 +18,7 @@ except ImportError:
     sys.exit(1)
 
 TASKS = ["gru_retrain", "iter5", "iter6", "distilbert_hier", "distilbert_concat"]
-PROJECT = "rockcyber/multiturn-injection-detection-v2"
+PROJECT = "REDACTED/multiturn-injection-detection-v2"
 
 
 def check_artifacts():

@@ -82,7 +82,7 @@ log "=== Step 1: Provisioning ${#TASKS[@]} pods ==="
 for task in "${TASKS[@]}"; do
     log "  Creating pod for: $task"
 
-    STARTUP_CMD="echo '$WANDB_KEY' > /root/.wandb_key && apt-get update -qq && apt-get install -y -qq git > /dev/null 2>&1 && git clone -b feature/phase3-training-pipeline https://github.com/rocklambros/multiturn-injection-detection.git /workspace/multiturn-injection-detection 2>/dev/null && cd /workspace/multiturn-injection-detection && pip install -q -r requirements.txt 2>&1 | tail -1 && bash scripts/bootstrap_runpod.sh $task 2>&1 | tee /workspace/${task}.log; echo EXIT_CODE=\$? >> /workspace/${task}.log"
+    STARTUP_CMD="echo '$WANDB_KEY' > /root/.wandb_key && apt-get update -qq && apt-get install -y -qq git > /dev/null 2>&1 && git clone -b feature/phase3-training-pipeline https://anonymous.4open.science/r/multiturn-injection-detection-73E6.git /workspace/multiturn-injection-detection 2>/dev/null && cd /workspace/multiturn-injection-detection && pip install -q -r requirements.txt 2>&1 | tail -1 && bash scripts/bootstrap_runpod.sh $task 2>&1 | tee /workspace/${task}.log; echo EXIT_CODE=\$? >> /workspace/${task}.log"
 
     POD_ID=$(runpodctl create pod \
         --name "train-${task}" \
@@ -157,7 +157,7 @@ while [ $COMPLETED -lt ${#TASKS[@]} ]; do
 import wandb
 api = wandb.Api()
 try:
-    art = api.artifact('rockcyber/multiturn-injection-detection-v2/${task}_results:latest')
+    art = api.artifact('REDACTED/multiturn-injection-detection-v2/${task}_results:latest')
     print('FOUND')
 except wandb.errors.CommError:
     print('NOT_FOUND')

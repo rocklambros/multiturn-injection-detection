@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-17
 **Goal:** Update all GitHub repo documentation to reflect the final project state, architecture, dataflow, and results.
-**Audience:** Dual — academic reviewers (COMP 4531, potential venue submission) and security practitioners.
+**Audience:** Dual — academic reviewers (a graduate deep learning course, potential venue submission) and security practitioners.
 
 ---
 
@@ -58,8 +58,8 @@
 8. **Iteration Roadmap** — Keep the existing table format. All F1 values verified against metrics.json.
 
 9. **Published Artifacts** — New section documenting gated HuggingFace Hub releases:
-   - **Dataset:** [rockCO78/multiturn-injection-detection](https://huggingface.co/datasets/rockCO78/multiturn-injection-detection) — processed single-turn CSVs + synthetic multi-turn JSONs. Gated access.
-   - **Model:** [rockCO78/multiturn-injection-detector](https://huggingface.co/rockCO78/multiturn-injection-detector) — trained model weights (GRU encoder, multi-turn LSTM+attention). Gated access.
+   - **Dataset:** [REDACTED/multiturn-injection-detection](https://anonymous.4open.science/r/multiturn-injection-detection-73E6) — processed single-turn CSVs + synthetic multi-turn JSONs. Gated access.
+   - **Model:** [REDACTED/multiturn-injection-detector](https://anonymous.4open.science/r/multiturn-injection-detection-73E6) — trained model weights (GRU encoder, multi-turn LSTM+attention). Gated access.
    - Note that these are gated artifacts requiring HuggingFace approval to access.
    - Brief explanation of what's included in each artifact.
 
@@ -75,7 +75,7 @@
 
 15. **References** — Keep existing 5 references unchanged.
 
-16. **Author** — "Rock Lambros | May 2026"
+16. **Author** — "Anonymous (under review) | May 2026"
 
 ### Sections removed from README (moved elsewhere)
 - Detailed "Reproducibility" setup instructions -> docs/INSTALLATION.md
@@ -162,7 +162,7 @@
 
 2. **Quick Start** (5 commands)
    ```
-   git clone https://github.com/rocklambros/multiturn-injection-detection.git
+   git clone https://anonymous.4open.science/r/multiturn-injection-detection-73E6.git
    cd multiturn-injection-detection
    pip install -r requirements.txt
    python -m src.data.download && python -m src.data.download_extra
@@ -177,8 +177,8 @@
    - Verify CUDA availability
 
 4. **Using Published HuggingFace Artifacts (alternative to local generation)**
-   - Dataset: [rockCO78/multiturn-injection-detection](https://huggingface.co/datasets/rockCO78/multiturn-injection-detection) — download pre-processed data instead of running the pipeline
-   - Model: [rockCO78/multiturn-injection-detector](https://huggingface.co/rockCO78/multiturn-injection-detector) — download trained weights instead of retraining
+   - Dataset: [REDACTED/multiturn-injection-detection](https://anonymous.4open.science/r/multiturn-injection-detection-73E6) — download pre-processed data instead of running the pipeline
+   - Model: [REDACTED/multiturn-injection-detector](https://anonymous.4open.science/r/multiturn-injection-detection-73E6) — download trained weights instead of retraining
    - Both are gated: explain how to request access and authenticate (`huggingface-cli login`)
    - Note which source datasets also require gated access or authentication on HuggingFace
 
@@ -233,7 +233,7 @@
 
 Standard Citation File Format:
 - Title: "Multi-Turn Distributed Prompt Injection Detection"
-- Author: Rock Lambros
+- Author: Anonymous (under review)
 - Date: 2026-05
 - Type: software
 - URL: repository URL
@@ -241,11 +241,11 @@ Standard Citation File Format:
 
 Plus BibTeX equivalent in README:
 ```bibtex
-@software{lambros2026multiturn,
-  author = {Lambros, Rock},
+@software{anonymous2026multiturn,
+  author = {Anonymous (under review)},
   title = {Multi-Turn Distributed Prompt Injection Detection},
   year = {2026},
-  url = {https://github.com/rocklambros/multiturn-injection-detection}
+  url = {https://anonymous.4open.science/r/multiturn-injection-detection-73E6}
 }
 ```
 

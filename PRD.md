@@ -1,7 +1,7 @@
 # PRD: Multi-Turn Distributed Prompt Injection Detection
 
 Version: 2.0
-Author: Rock Lambros
+Author: Anonymous (under review)
 Date: April 1, 2026
 Target Platform: NVIDIA Jetson Orin AGX (64GB RAM, 2048-core Ampere GPU)
 Framework: PyTorch

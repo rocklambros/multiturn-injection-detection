@@ -1,0 +1,122 @@
+{
+  "easy_train": {
+    "pairs_requested": 3000,
+    "pairs_completed": 2906,
+    "errors": 94,
+    "difficulty": "easy",
+    "output_path": "data/synthetic_v3/sp_easy_train.jsonl",
+    "total_input_tokens": 3585040,
+    "total_output_tokens": 6877584,
+    "estimated_cost_usd": 113.92
+  },
+  "easy_val": {
+    "pairs_requested": 500,
+    "pairs_completed": 490,
+    "errors": 10,
+    "difficulty": "easy",
+    "output_path": "data/synthetic_v3/sp_easy_val.jsonl",
+    "total_input_tokens": 606168,
+    "total_output_tokens": 1138182,
+    "estimated_cost_usd": 18.89
+  },
+  "easy_test": {
+    "pairs_requested": 750,
+    "pairs_completed": 731,
+    "errors": 19,
+    "difficulty": "easy",
+    "output_path": "data/synthetic_v3/sp_easy_test.jsonl",
+    "total_input_tokens": 903139,
+    "total_output_tokens": 1738897,
+    "estimated_cost_usd": 28.79
+  },
+  "medium_train": {
+    "pairs_requested": 3000,
+    "pairs_completed": 2842,
+    "errors": 158,
+    "difficulty": "medium",
+    "output_path": "data/synthetic_v3/sp_medium_train.jsonl",
+    "total_input_tokens": 3458396,
+    "total_output_tokens": 6732004,
+    "estimated_cost_usd": 111.36
+  },
+  "medium_val": {
+    "pairs_requested": 500,
+    "pairs_completed": 476,
+    "errors": 24,
+    "difficulty": "medium",
+    "output_path": "data/synthetic_v3/sp_medium_val.jsonl",
+    "total_input_tokens": 574333,
+    "total_output_tokens": 1095420,
+    "estimated_cost_usd": 18.15
+  },
+  "medium_test": {
+    "pairs_requested": 750,
+    "pairs_completed": 707,
+    "errors": 43,
+    "difficulty": "medium",
+    "output_path": "data/synthetic_v3/sp_medium_test.jsonl",
+    "total_input_tokens": 872276,
+    "total_output_tokens": 1685117,
+    "estimated_cost_usd": 27.89
+  },
+  "hard_train": {
+    "pairs_requested": 3000,
+    "pairs_completed": 2795,
+    "errors": 205,
+    "difficulty": "hard",
+    "output_path": "data/synthetic_v3/sp_hard_train.jsonl",
+    "total_input_tokens": 3415654,
+    "total_output_tokens": 6558934,
+    "estimated_cost_usd": 108.63
+  },
+  "hard_val": {
+    "pairs_requested": 500,
+    "pairs_completed": 469,
+    "errors": 31,
+    "difficulty": "hard",
+    "output_path": "data/synthetic_v3/sp_hard_val.jsonl",
+    "total_input_tokens": 571979,
+    "total_output_tokens": 1076139,
+    "estimated_cost_usd": 17.86
+  },
+  "hard_test": {
+    "pairs_requested": 750,
+    "pairs_completed": 697,
+    "errors": 53,
+    "difficulty": "hard",
+    "output_path": "data/synthetic_v3/sp_hard_test.jsonl",
+    "total_input_tokens": 855154,
+    "total_output_tokens": 1643369,
+    "estimated_cost_usd": 27.22
+  },
+  "adversarial_train": {
+    "pairs_requested": 1000,
+    "pairs_completed": 834,
+    "errors": 166,
+    "difficulty": "adversarial",
+    "output_path": "data/synthetic_v3/sp_adversarial_train.jsonl",
+    "total_input_tokens": 1038288,
+    "total_output_tokens": 1952616,
+    "estimated_cost_usd": 32.4
+  },
+  "adversarial_val": {
+    "pairs_requested": 250,
+    "pairs_completed": 213,
+    "errors": 37,
+    "difficulty": "adversarial",
+    "output_path": "data/synthetic_v3/sp_adversarial_val.jsonl",
+    "total_input_tokens": 262261,
+    "total_output_tokens": 481875,
+    "estimated_cost_usd": 8.01
+  },
+  "adversarial_test": {
+    "pairs_requested": 500,
+    "pairs_completed": 430,
+    "errors": 70,
+    "difficulty": "adversarial",
+    "output_path": "data/synthetic_v3/sp_adversarial_test.jsonl",
+    "total_input_tokens": 527739,
+    "total_output_tokens": 1003361,
+    "estimated_cost_usd": 16.63
+  }
+}

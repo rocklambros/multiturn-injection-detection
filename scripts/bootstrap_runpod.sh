@@ -6,7 +6,7 @@ WANDB_KEY_FILE="/root/.wandb_key"
 GH_TOKEN_FILE="/root/.gh_token"
 REPO_BRANCH="${REPO_BRANCH:-feature/v3-clean-retrain}"
 REPO_DIR="/workspace/multiturn-injection-detection"
-ARTIFACT="rockcyber/multiturn-injection-detection-v2/synthetic_v3_data:latest"
+ARTIFACT="REDACTED/multiturn-injection-detection-v2/synthetic_v3_data:latest"
 HEARTBEAT_INTERVAL=60
 
 usage() {
@@ -85,7 +85,7 @@ elif [ -n "${GH_TOKEN:-}" ]; then
 else
     die "GitHub token not found. Set GH_TOKEN env var or put token in $GH_TOKEN_FILE"
 fi
-REPO_URL="https://${GH_TOKEN}@github.com/rocklambros/multiturn-injection-detection.git"
+REPO_URL="https://${GH_TOKEN}@anonymous.4open.science/r/multiturn-injection-detection-73E6.git"
 
 if [ -d "$REPO_DIR/.git" ]; then
     cd "$REPO_DIR"
@@ -148,7 +148,7 @@ if echo "$NEEDS_ENCODER" | grep -qw "$TASK"; then
         python3 -c "
 import wandb, shutil, os
 run = wandb.init(project='multiturn-injection-detection-v2', job_type='download', name='${TASK}_encoder_download')
-artifact = run.use_artifact('rockcyber/multiturn-injection-detection-v2/v3_gru_retrain_results:latest')
+artifact = run.use_artifact('REDACTED/multiturn-injection-detection-v2/v3_gru_retrain_results:latest')
 base = artifact.download('/tmp/gru_artifact')
 run.finish()
 for root, dirs, files in os.walk(base):

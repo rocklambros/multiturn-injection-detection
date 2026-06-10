@@ -1,0 +1,52 @@
+{
+  "overall": {
+    "accuracy": 0.5,
+    "f1": 0.6666666666666666,
+    "precision": 0.5,
+    "recall": 1.0,
+    "auc": 0.5,
+    "n": 5130
+  },
+  "per_tier": {
+    "adversarial": {
+      "accuracy": 0.5,
+      "f1": 0.6666666666666666,
+      "precision": 0.5,
+      "recall": 1.0,
+      "n": 860,
+      "n_attack": 430,
+      "n_benign": 430,
+      "auc": 0.49999999999999994
+    },
+    "easy": {
+      "accuracy": 0.5,
+      "f1": 0.6666666666666666,
+      "precision": 0.5,
+      "recall": 1.0,
+      "n": 1462,
+      "n_attack": 731,
+      "n_benign": 731,
+      "auc": 0.5
+    },
+    "hard": {
+      "accuracy": 0.5,
+      "f1": 0.6666666666666666,
+      "precision": 0.5,
+      "recall": 1.0,
+      "n": 1394,
+      "n_attack": 697,
+      "n_benign": 697,
+      "auc": 0.5
+    },
+    "medium": {
+      "accuracy": 0.5,
+      "f1": 0.6666666666666666,
+      "precision": 0.5,
+      "recall": 1.0,
+      "n": 1414,
+      "n_attack": 707,
+      "n_benign": 707,
+      "auc": 0.5
+    }
+  }
+}

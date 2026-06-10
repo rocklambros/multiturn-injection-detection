@@ -10,8 +10,8 @@
 
 # Multi-Turn Distributed Prompt Injection Detection
 
-**Kyriakos "Rock" Lambros**  
-COMP 4531: Deep Learning, Spring 2026
+**Anonymous (under review)**  
+Spring 2026
 
 *Detecting attacks that hide across multiple conversation turns*
 

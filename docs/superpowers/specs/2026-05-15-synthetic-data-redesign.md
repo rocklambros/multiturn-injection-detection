@@ -1,7 +1,7 @@
 # Spec: Synthetic Multi-Turn Data Redesign & Systematic Fix
 
 **Date:** 2026-05-15
-**Author:** Rock Lambros
+**Author:** Anonymous (under review)
 **Status:** Approved
 **Scope:** Fix all issues identified in adversarial review; redesign synthetic data generation; add ablation suite; prepare for NeurIPS + security venue submission.
 

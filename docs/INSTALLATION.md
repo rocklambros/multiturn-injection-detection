@@ -11,7 +11,7 @@
 ## Quick Start
 
 ```bash
-git clone https://github.com/rocklambros/multiturn-injection-detection.git
+git clone https://anonymous.4open.science/r/multiturn-injection-detection-73E6.git
 cd multiturn-injection-detection
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
@@ -89,8 +89,8 @@ Expected output on a CUDA-enabled machine: `True <device name>`. On CPU-only har
 
 Running the full data pipeline and training all model iterations takes under 30 minutes on GPU. As an alternative, pre-processed data and trained weights are available directly from HuggingFace. Both repositories are gated and require approval before access is granted.
 
-- **Dataset:** [rockCO78/multiturn-injection-detection](https://huggingface.co/datasets/rockCO78/multiturn-injection-detection) — processed single-turn CSVs and synthetic multi-turn conversation JSONs
-- **Model:** [rockCO78/multiturn-injection-detector](https://huggingface.co/rockCO78/multiturn-injection-detector) — trained weights for the GRU encoder, multi-turn LSTM with attention, and ablation variants
+- **Dataset:** [REDACTED/multiturn-injection-detection](https://anonymous.4open.science/r/multiturn-injection-detection-73E6) — processed single-turn CSVs and synthetic multi-turn conversation JSONs
+- **Model:** [REDACTED/multiturn-injection-detector](https://anonymous.4open.science/r/multiturn-injection-detection-73E6) — trained weights for the GRU encoder, multi-turn LSTM with attention, and ablation variants
 
 After your access request is approved, install the HuggingFace CLI and authenticate:
 
@@ -103,8 +103,8 @@ Then download the artifacts:
 
 ```python
 from huggingface_hub import snapshot_download
-snapshot_download("rockCO78/multiturn-injection-detection", repo_type="dataset", local_dir="data/")
-snapshot_download("rockCO78/multiturn-injection-detector", local_dir="models/")
+snapshot_download("REDACTED/multiturn-injection-detection", repo_type="dataset", local_dir="data/")
+snapshot_download("REDACTED/multiturn-injection-detector", local_dir="models/")
 ```
 
 Note: all eight source HuggingFace datasets used in this project are publicly accessible without authentication. Only the derived artifacts above require approval.

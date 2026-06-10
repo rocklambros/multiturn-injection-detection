@@ -68,12 +68,12 @@ title: "Multi-Turn Distributed Prompt Injection Detection"
 message: "If you use this software, please cite it as below."
 type: software
 authors:
-  - family-names: Lambros
-    given-names: Rock
-    email: rock@rockcyber.com
+  - family-names: Anonymous
+    given-names: Anonymous
+    email: anonymous@example.com
 date-released: "2026-05-17"
-url: "https://github.com/rocklambros/multiturn-injection-detection"
-repository-code: "https://github.com/rocklambros/multiturn-injection-detection"
+url: "https://anonymous.4open.science/r/multiturn-injection-detection-73E6"
+repository-code: "https://anonymous.4open.science/r/multiturn-injection-detection-73E6"
 license: CC-BY-NC-4.0
 keywords:
   - prompt-injection
@@ -215,7 +215,7 @@ Write `docs/INSTALLATION.md` with these sections and content:
 
 **Section 2 — Quick Start** (exact commands):
 ```bash
-git clone https://github.com/rocklambros/multiturn-injection-detection.git
+git clone https://anonymous.4open.science/r/multiturn-injection-detection-73E6.git
 cd multiturn-injection-detection
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
@@ -234,8 +234,8 @@ jupyter notebook notebooks/multiturn_injection_detection.ipynb
 
 Explain that pre-processed data and trained weights are available as an alternative to running the full pipeline:
 
-- **Dataset:** [rockCO78/multiturn-injection-detection](https://huggingface.co/datasets/rockCO78/multiturn-injection-detection) — contains processed single-turn CSVs and synthetic multi-turn conversation JSONs
-- **Model:** [rockCO78/multiturn-injection-detector](https://huggingface.co/rockCO78/multiturn-injection-detector) — contains trained model weights (GRU encoder, multi-turn LSTM with attention, ablation variants)
+- **Dataset:** [REDACTED/multiturn-injection-detection](https://anonymous.4open.science/r/multiturn-injection-detection-73E6) — contains processed single-turn CSVs and synthetic multi-turn conversation JSONs
+- **Model:** [REDACTED/multiturn-injection-detector](https://anonymous.4open.science/r/multiturn-injection-detection-73E6) — contains trained model weights (GRU encoder, multi-turn LSTM with attention, ablation variants)
 
 Both artifacts require gated access. To use them:
 ```bash
@@ -243,8 +243,8 @@ pip install huggingface_hub
 huggingface-cli login
 # Request access at the dataset/model pages, then:
 from huggingface_hub import snapshot_download
-snapshot_download("rockCO78/multiturn-injection-detection", repo_type="dataset", local_dir="data/")
-snapshot_download("rockCO78/multiturn-injection-detector", local_dir="models/")
+snapshot_download("REDACTED/multiturn-injection-detection", repo_type="dataset", local_dir="data/")
+snapshot_download("REDACTED/multiturn-injection-detector", local_dir="models/")
 ```
 
 Note: all 8 source HuggingFace datasets used in this project are publicly accessible without authentication.
@@ -426,8 +426,8 @@ The new README follows this exact structure. Each section is described below wit
 
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC_BY--NC_4.0-lightgrey.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://python.org)
-[![Dataset on HF](https://img.shields.io/badge/HuggingFace-Dataset-yellow.svg)](https://huggingface.co/datasets/rockCO78/multiturn-injection-detection)
-[![Model on HF](https://img.shields.io/badge/HuggingFace-Model-yellow.svg)](https://huggingface.co/rockCO78/multiturn-injection-detector)
+[![Dataset on HF](https://img.shields.io/badge/HuggingFace-Dataset-yellow.svg)](https://anonymous.4open.science/r/multiturn-injection-detection-73E6)
+[![Model on HF](https://img.shields.io/badge/HuggingFace-Model-yellow.svg)](https://anonymous.4open.science/r/multiturn-injection-detection-73E6)
 
 **A deep learning system that detects prompt injection attacks hidden across multiple conversation turns — where no single message looks malicious on its own.**
 ```
@@ -568,8 +568,8 @@ Pre-processed data and trained model weights are available on HuggingFace Hub (g
 
 | Artifact | Link | Contents |
 |----------|------|----------|
-| **Dataset** | [rockCO78/multiturn-injection-detection](https://huggingface.co/datasets/rockCO78/multiturn-injection-detection) | Processed single-turn CSVs (73K samples), synthetic multi-turn JSONs (7K conversations), vocabulary |
-| **Model** | [rockCO78/multiturn-injection-detector](https://huggingface.co/rockCO78/multiturn-injection-detector) | Trained GRU encoder, multi-turn LSTM+attention weights, ablation model variants |
+| **Dataset** | [REDACTED/multiturn-injection-detection](https://anonymous.4open.science/r/multiturn-injection-detection-73E6) | Processed single-turn CSVs (73K samples), synthetic multi-turn JSONs (7K conversations), vocabulary |
+| **Model** | [REDACTED/multiturn-injection-detector](https://anonymous.4open.science/r/multiturn-injection-detection-73E6) | Trained GRU encoder, multi-turn LSTM+attention weights, ablation model variants |
 
 See [Installation Guide](docs/INSTALLATION.md#using-published-huggingface-artifacts) for download instructions.
 ```
@@ -585,8 +585,8 @@ See [Installation Guide](docs/INSTALLATION.md#using-published-huggingface-artifa
 - **[Installation Guide](docs/INSTALLATION.md)** — Environment setup, data download, troubleshooting
 - **[Architecture Decisions](docs/ARCHITECTURE.md)** — Encoder selection, Chollet analysis, ablation findings, confound gates
 - **[Contributing](CONTRIBUTING.md)** — Code standards, testing, pull request process
-- **[Dataset on HuggingFace](https://huggingface.co/datasets/rockCO78/multiturn-injection-detection)** — Pre-processed data (gated)
-- **[Model on HuggingFace](https://huggingface.co/rockCO78/multiturn-injection-detector)** — Trained weights (gated)
+- **[Dataset on HuggingFace](https://anonymous.4open.science/r/multiturn-injection-detection-73E6)** — Pre-processed data (gated)
+- **[Model on HuggingFace](https://anonymous.4open.science/r/multiturn-injection-detection-73E6)** — Trained weights (gated)
 ```
 
 **Citation:**
@@ -596,17 +596,17 @@ See [Installation Guide](docs/INSTALLATION.md#using-published-huggingface-artifa
 If you use this work, please cite:
 
 ```bibtex
-@software{lambros2026multiturn,
-  author = {Lambros, Rock},
+@software{anonymous2026multiturn,
+  author = {Anonymous (under review)},
   title = {Multi-Turn Distributed Prompt Injection Detection},
   year = {2026},
-  url = {https://github.com/rocklambros/multiturn-injection-detection}
+  url = {https://anonymous.4open.science/r/multiturn-injection-detection-73E6}
 }
 ```
 
 Or in plain text:
 
-> Lambros, R. (2026). *Multi-Turn Distributed Prompt Injection Detection.* GitHub. https://github.com/rocklambros/multiturn-injection-detection
+> Anonymous, R. (2026). *Multi-Turn Distributed Prompt Injection Detection.* GitHub. https://anonymous.4open.science/r/multiturn-injection-detection-73E6
 ```
 
 **License:**
@@ -618,7 +618,7 @@ This project is licensed under [CC BY-NC 4.0](LICENSE) — free for non-commerci
 
 **References** — Keep the existing 5 references from the current README unchanged.
 
-**Author** — `**Author:** Rock Lambros | May 2026`
+**Author** — `**Author:** Anonymous (under review) | May 2026`
 
 - [ ] **Step 3: Verify all internal links resolve**
 
@@ -702,8 +702,8 @@ Expected: `CITATION.cff: valid`
 
 Run:
 ```bash
-curl -sI "https://huggingface.co/datasets/rockCO78/multiturn-injection-detection" | head -1
-curl -sI "https://huggingface.co/rockCO78/multiturn-injection-detector" | head -1
+curl -sI "https://anonymous.4open.science/r/multiturn-injection-detection-73E6" | head -1
+curl -sI "https://anonymous.4open.science/r/multiturn-injection-detection-73E6" | head -1
 ```
 Expected: both return `HTTP/2 200` or `HTTP/1.1 200`
 

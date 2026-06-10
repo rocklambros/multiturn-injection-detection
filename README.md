@@ -2,8 +2,8 @@
 
 [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC_BY--NC_4.0-lightgrey.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://python.org)
-[![Dataset on HF](https://img.shields.io/badge/HuggingFace-Dataset-yellow.svg)](https://huggingface.co/datasets/rockCO78/multiturn-injection-detection)
-[![Model on HF](https://img.shields.io/badge/HuggingFace-Model-yellow.svg)](https://huggingface.co/rockCO78/multiturn-injection-detector)
+[![Dataset](https://img.shields.io/badge/Dataset-in--repo-yellow.svg)](data/hf_dataset/)
+[![Model](https://img.shields.io/badge/Model-in--repo-yellow.svg)](models/)
 
 **A deep learning system that detects prompt injection attacks hidden across multiple conversation turns — where no single message looks malicious on its own.**
 
@@ -464,14 +464,14 @@ multiturn-injection-detection/
 
 ## Published Artifacts
 
-Pre-processed data and trained model weights are available on HuggingFace Hub (gated access — request approval on each page):
+Pre-processed data and trained model weights are included directly in this repository:
 
-| Artifact | Link | Contents |
-|----------|------|----------|
-| **Dataset** | [rockCO78/multiturn-injection-detection](https://huggingface.co/datasets/rockCO78/multiturn-injection-detection) | Processed single-turn CSVs (73K samples), v3 shared-prefix multi-turn conversations (27K), vocabulary |
-| **Model** | [rockCO78/multiturn-injection-detector](https://huggingface.co/rockCO78/multiturn-injection-detector) | Trained GRU encoder, multi-turn LSTM+attention, DistilBERT concat/hierarchical, ablation variants |
+| Artifact | Location | Contents |
+|----------|----------|----------|
+| **Dataset** | [`data/hf_dataset/`](data/hf_dataset/) | v3 shared-prefix multi-turn conversations (27K) and supporting JSON (intents, topic partition, generation stats, gate results) |
+| **Model** | [`models/`](models/) | Trained GRU encoder, multi-turn LSTM+attention, DistilBERT concat/hierarchical, ablation variants, vocabulary |
 
-See [Installation Guide](docs/INSTALLATION.md#using-published-huggingface-artifacts) for download instructions.
+The large dataset JSON and model weights are stored with Git LFS.
 
 ---
 
@@ -498,7 +498,7 @@ The project also includes **27,180 synthetic multi-turn conversations** (the v3 
 
 ## Hardware
 
-The primary development target is an **NVIDIA Jetson Orin AGX** (64GB RAM, 2048-core Ampere GPU, CUDA 12.6). Extended evaluation runs were conducted on RunPod RTX 4090 instances. Total notebook execution time is under 30 minutes on GPU.
+The primary deployment target is an **NVIDIA Jetson Orin AGX** (64GB RAM, 2048-core Ampere GPU, CUDA 12.6). Model training was performed on RunPod A100 instances; extended evaluation and ablation runs were conducted on RunPod RTX 4090 instances. Total notebook execution time is under 30 minutes on GPU.
 
 Most models train on consumer hardware. The lightweight temporal LSTM has just 27K trainable parameters. The top-performing concatenated DistilBERT is fully fine-tuned (66.4M trainable parameters) and benefits from GPU acceleration; the hierarchical DistilBERT variant has 5.5M trainable parameters.
 
@@ -509,8 +509,8 @@ Most models train on consumer hardware. The lightweight temporal LSTM has just 2
 - **[Installation Guide](docs/INSTALLATION.md)** — Environment setup, data download, troubleshooting
 - **[Architecture Decisions](docs/ARCHITECTURE.md)** — Encoder selection, Chollet analysis, ablation findings, confound gates
 - **[Contributing](CONTRIBUTING.md)** — Code standards, testing, pull request process
-- **[Dataset on HuggingFace](https://huggingface.co/datasets/rockCO78/multiturn-injection-detection)** — Pre-processed data (gated)
-- **[Model on HuggingFace](https://huggingface.co/rockCO78/multiturn-injection-detector)** — Trained weights (gated)
+- **[Dataset](data/hf_dataset/)** — Pre-processed data included in this repository
+- **[Model](models/)** — Trained weights included in this repository
 
 ---
 
@@ -518,14 +518,14 @@ Most models train on consumer hardware. The lightweight temporal LSTM has just 2
 
 If you use this work, please cite:
 
-> Lambros, R. (2026). *Multi-Turn Distributed Prompt Injection Detection.* GitHub. https://github.com/rocklambros/multiturn-injection-detection
+> Anonymous (under review). (2026). *Multi-Turn Distributed Prompt Injection Detection.* Anonymized repository. https://anonymous.4open.science/r/multiturn-injection-detection-73E6
 
 ```bibtex
-@software{lambros2026multiturn,
-  author = {Lambros, Rock},
+@software{anonymous2026multiturn,
+  author = {{Anonymous (under review)}},
   title = {Multi-Turn Distributed Prompt Injection Detection},
   year = {2026},
-  url = {https://github.com/rocklambros/multiturn-injection-detection}
+  url = {https://anonymous.4open.science/r/multiturn-injection-detection-73E6}
 }
 ```
 
@@ -533,7 +533,7 @@ If you use this work, please cite:
 
 ## License
 
-This project is licensed under [CC BY-NC 4.0](LICENSE) — free for non-commercial use with attribution.
+Source code is licensed under [Apache-2.0](LICENSE-CODE). The dataset, model weights, and documentation are licensed under [CC BY-NC 4.0](LICENSE) — free for non-commercial use with attribution.
 
 ---
 
@@ -547,4 +547,4 @@ This project is licensed under [CC BY-NC 4.0](LICENSE) — free for non-commerci
 
 ---
 
-**Author:** Rock Lambros | May 2026
+**Author:** Anonymous (under review) | May 2026

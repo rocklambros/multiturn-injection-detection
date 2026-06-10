@@ -34,7 +34,7 @@ SSH into each pod and run ONE command:
 ```bash
 echo 'YOUR_WANDB_KEY' > /root/.wandb_key && \
 apt-get update -qq && apt-get install -y -qq git > /dev/null 2>&1 && \
-git clone -b feature/phase3-training-pipeline https://github.com/rocklambros/multiturn-injection-detection.git /workspace/mt && \
+git clone -b feature/phase3-training-pipeline https://anonymous.4open.science/r/multiturn-injection-detection-73E6.git /workspace/mt && \
 cd /workspace/mt && pip install -q -r requirements.txt && \
 bash scripts/bootstrap_runpod.sh gru_retrain
 ```
@@ -43,7 +43,7 @@ bash scripts/bootstrap_runpod.sh gru_retrain
 ```bash
 echo 'YOUR_WANDB_KEY' > /root/.wandb_key && \
 apt-get update -qq && apt-get install -y -qq git > /dev/null 2>&1 && \
-git clone -b feature/phase3-training-pipeline https://github.com/rocklambros/multiturn-injection-detection.git /workspace/mt && \
+git clone -b feature/phase3-training-pipeline https://anonymous.4open.science/r/multiturn-injection-detection-73E6.git /workspace/mt && \
 cd /workspace/mt && pip install -q -r requirements.txt && \
 bash scripts/bootstrap_runpod.sh iter5
 ```
@@ -52,7 +52,7 @@ bash scripts/bootstrap_runpod.sh iter5
 ```bash
 echo 'YOUR_WANDB_KEY' > /root/.wandb_key && \
 apt-get update -qq && apt-get install -y -qq git > /dev/null 2>&1 && \
-git clone -b feature/phase3-training-pipeline https://github.com/rocklambros/multiturn-injection-detection.git /workspace/mt && \
+git clone -b feature/phase3-training-pipeline https://anonymous.4open.science/r/multiturn-injection-detection-73E6.git /workspace/mt && \
 cd /workspace/mt && pip install -q -r requirements.txt && \
 bash scripts/bootstrap_runpod.sh iter6
 ```
@@ -61,7 +61,7 @@ bash scripts/bootstrap_runpod.sh iter6
 ```bash
 echo 'YOUR_WANDB_KEY' > /root/.wandb_key && \
 apt-get update -qq && apt-get install -y -qq git > /dev/null 2>&1 && \
-git clone -b feature/phase3-training-pipeline https://github.com/rocklambros/multiturn-injection-detection.git /workspace/mt && \
+git clone -b feature/phase3-training-pipeline https://anonymous.4open.science/r/multiturn-injection-detection-73E6.git /workspace/mt && \
 cd /workspace/mt && pip install -q -r requirements.txt && \
 bash scripts/bootstrap_runpod.sh distilbert_hier
 ```
@@ -70,14 +70,14 @@ bash scripts/bootstrap_runpod.sh distilbert_hier
 ```bash
 echo 'YOUR_WANDB_KEY' > /root/.wandb_key && \
 apt-get update -qq && apt-get install -y -qq git > /dev/null 2>&1 && \
-git clone -b feature/phase3-training-pipeline https://github.com/rocklambros/multiturn-injection-detection.git /workspace/mt && \
+git clone -b feature/phase3-training-pipeline https://anonymous.4open.science/r/multiturn-injection-detection-73E6.git /workspace/mt && \
 cd /workspace/mt && pip install -q -r requirements.txt && \
 bash scripts/bootstrap_runpod.sh distilbert_concat
 ```
 
 ### 3. Monitor
 
-Watch all 5 runs at: https://wandb.ai/rockcyber/multiturn-injection-detection-v2
+Watch all 5 runs at: https://wandb.ai/REDACTED/multiturn-injection-detection-v2
 
 Each pod:
 - Logs to WandB in real time (loss curves, accuracy, grad norms)

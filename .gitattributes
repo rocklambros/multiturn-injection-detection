@@ -1,1 +1,10 @@
 notebooks/*.ipynb filter=nbmeta
+
+# Model weights and large binary artifacts tracked via Git LFS.
+*.pt filter=lfs diff=lfs merge=lfs -text
+*.bin filter=lfs diff=lfs merge=lfs -text
+*.safetensors filter=lfs diff=lfs merge=lfs -text
+# Large dataset JSON files (exceed GitHub size limits) tracked via Git LFS.
+data/hf_dataset/multiturn_train.json filter=lfs diff=lfs merge=lfs -text
+data/hf_dataset/multiturn_val.json filter=lfs diff=lfs merge=lfs -text
+data/hf_dataset/multiturn_test.json filter=lfs diff=lfs merge=lfs -text

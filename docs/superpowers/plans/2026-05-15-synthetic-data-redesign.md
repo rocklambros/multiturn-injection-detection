@@ -3381,7 +3381,7 @@ echo "=== RunPod Instance Bootstrap ==="
 
 # Clone repo
 if [ ! -d "multiturn-injection-detection" ]; then
-    git clone https://github.com/rocklambros/multiturn-injection-detection.git
+    git clone https://anonymous.4open.science/r/multiturn-injection-detection-73E6.git
     cd multiturn-injection-detection
 else
     cd multiturn-injection-detection

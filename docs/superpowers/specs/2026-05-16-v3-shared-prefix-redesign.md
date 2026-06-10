@@ -1,7 +1,7 @@
 # Spec: V3 Shared-Prefix Data Redesign & Model Hardening
 
 **Date:** 2026-05-16
-**Author:** Rock Lambros
+**Author:** Anonymous (under review)
 **Status:** Draft (Rev 2 — incorporates adversarial review fixes #1-12)
 **Supersedes:** `2026-05-15-synthetic-data-redesign.md` (data generation architecture only; code fixes, evaluation suite, and paper positioning from that spec remain valid unless overridden below)
 

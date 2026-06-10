@@ -1,7 +1,7 @@
 ---
 title: "Multi-Turn Distributed Prompt Injection Detection"
-author: 'Kyriakos "Rock" Lambros'
-date: 'COMP 4531: Deep Learning, Spring 2026'
+author: 'Anonymous (under review)'
+date: 'Spring 2026'
 abstract: |
   Single-turn prompt injection classifiers achieve high accuracy on known attack distributions, yet they fail against multi-turn attacks that distribute malicious intent across several conversation turns, where each turn appears benign in isolation and the adversarial signal emerges only from how turns relate over time. We present a dual-encoder architecture pairing a frozen single-turn GRU encoder (2.6M parameters) with a trainable sequence-level LSTM (27K trainable parameters) that carries accumulated context across turns. On 73,390 single-turn samples from eight public datasets, the Chollet heuristic correctly predicts that a TF-IDF bag-of-bigrams classifier (F1 = 0.834) outperforms all deep learning models, including transformers, at this data scale. On a shared-prefix dataset of 27,180 synthetic multi-turn conversations generated with Claude Sonnet 4.6 across four difficulty tiers, the temporal LSTM reaches F1 = 0.837 (95% bootstrap CI [0.826, 0.847]) and significantly outperforms turn-level max-voting by +0.131 F1 (paired bootstrap, p < 0.001) using the same frozen encoder. Shuffling the turn order of correctly classified attacks flips 55% to incorrect, the strongest evidence that the model learns genuine temporal patterns rather than bag-of-turns features. A 66.4M-parameter concatenated DistilBERT reaches F1 = 0.992 with 2,460x more trainable parameters; the contribution here is not absolute accuracy but the demonstration that temporal modeling adds significant, ordering-dependent signal beyond per-turn classification in a 27K-parameter model deployable on resource-constrained devices.
 ---
@@ -323,7 +323,7 @@ This finding tempers the dual-encoder narrative. The architecture's value lies i
 - **Platform**: NVIDIA Jetson Orin AGX, PyTorch 2.8.0, Python 3.12
 - **Data**: Single-turn from HuggingFace (Apache 2.0 / MIT). Multi-turn generated via Anthropic API.
 - **Code**: Full source in `src/`, evaluation in `scripts/`, results in `results/v3_evaluation/`
-- **Hardware**: 64GB RAM, Ampere GPU (sm_87), CUDA 12.6. Training run on RunPod A100.
+- **Hardware**: Jetson Orin AGX deployment target (64GB RAM, Ampere GPU sm_87, CUDA 12.6). Model training on RunPod A100 instances; extended evaluation and ablations on RunPod RTX 4090 instances.
 - **Statistical methods**: 1000-sample bootstrap for CIs, paired one-sided bootstrap for significance tests.
 
 All model weights, metrics, predictions (.npz), and plots saved to `models/` and `results/` directories.

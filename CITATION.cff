@@ -3,12 +3,10 @@ title: "Multi-Turn Distributed Prompt Injection Detection"
 message: "If you use this software, please cite it as below."
 type: software
 authors:
-  - family-names: Lambros
-    given-names: Rock
-    email: rock@rockcyber.com
+  - name: "Anonymous (under review)"
 date-released: "2026-05-17"
-url: "https://github.com/rocklambros/multiturn-injection-detection"
-repository-code: "https://github.com/rocklambros/multiturn-injection-detection"
+url: "https://anonymous.4open.science/r/multiturn-injection-detection-73E6"
+repository-code: "https://anonymous.4open.science/r/multiturn-injection-detection-73E6"
 license: CC-BY-NC-4.0
 keywords:
   - prompt-injection

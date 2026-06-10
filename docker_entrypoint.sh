@@ -6,7 +6,7 @@ log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
 TASK_NAME="${TASK_NAME:-}"
 WANDB_API_KEY="${WANDB_API_KEY:-}"
 REPO_BRANCH="${REPO_BRANCH:-feature/phase3-training-pipeline}"
-REPO_URL="${REPO_URL:-https://github.com/rocklambros/multiturn-injection-detection.git}"
+REPO_URL="${REPO_URL:-https://anonymous.4open.science/r/multiturn-injection-detection-73E6.git}"
 
 if [ -z "$TASK_NAME" ]; then
     log "ERROR: TASK_NAME env var not set. Set it to one of: gru_retrain iter5 iter6 distilbert_hier distilbert_concat"

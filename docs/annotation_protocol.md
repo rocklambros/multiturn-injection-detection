@@ -3,7 +3,7 @@
 ## Overview
 
 - 300 multi-turn conversation sequences sampled from the v3 test set
-- 3 annotators recruited from COMP 4531 peers (non-authors, not involved in model development or data generation)
+- 3 annotators recruited from a graduate deep learning course peers (non-authors, not involved in model development or data generation)
 - Each sequence reviewed by 2 annotators (200 unique + 100 overlap for inter-annotator agreement)
 
 ## Sampling Strategy

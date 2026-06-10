@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Enable the nbmeta git clean filter for this clone.
 #
-# Owner: rock@rockcyber.com
+# Owner: anonymous@example.com
 # Version: 1.0.0
 #
 # Git filters cannot auto-activate from .gitattributes (a clone would

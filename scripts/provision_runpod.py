@@ -60,7 +60,7 @@ GPU_PREFERENCES = [
 IMAGE = "runpod/pytorch:1.0.2-cu1281-torch280-ubuntu2404"
 VOLUME_SIZE = 50
 CONTAINER_DISK = 20
-PROJECT = "rockcyber/multiturn-injection-detection-v2"
+PROJECT = "REDACTED/multiturn-injection-detection-v2"
 REPO_BRANCH = "feature/v3-clean-retrain"
 MAX_WAIT_SECONDS = 7200
 POLL_INTERVAL = 45
@@ -115,7 +115,7 @@ def build_startup_command(task):
         "sleep 5 && "
         "echo $WANDB_API_KEY > /root/.wandb_key && "
         "echo $GH_TOKEN > /root/.gh_token && "
-        f"REPO_URL=https://${{GH_TOKEN}}@github.com/rocklambros/multiturn-injection-detection.git && "
+        f"REPO_URL=https://${{GH_TOKEN}}@anonymous.4open.science/r/multiturn-injection-detection-73E6.git && "
         f"git clone -b {REPO_BRANCH} $REPO_URL /workspace/multiturn-injection-detection && "
         "cd /workspace/multiturn-injection-detection && "
         "pip install -q -r requirements.txt 2>&1 | tail -1 && "

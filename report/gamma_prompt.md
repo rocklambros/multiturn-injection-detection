@@ -2,7 +2,7 @@
 
 ## Instructions for Gamma
 
-**Audience:** Graduate students in COMP 4531 Deep Learning who understand LSTMs, GRUs, attention, and standard evaluation methodology. They have not studied prompt injection or multi-turn temporal classification. The presentation should teach them something new they can apply to their own sequence-modeling problems.
+**Audience:** Graduate students in a deep learning course who understand LSTMs, GRUs, attention, and standard evaluation methodology. They have not studied prompt injection or multi-turn temporal classification. The presentation should teach them something new they can apply to their own sequence-modeling problems.
 
 **Goal:** Teach classmates how LSTM/GRU gating mechanisms, typically taught on language modeling and machine translation, solve a real-world security problem: detecting attacks that unfold across multiple conversation turns. Walk them through the reasoning behind each architectural decision so they internalize the principles, not just the results.
 
@@ -18,11 +18,11 @@
 
 **Subtitle:** What LSTMs Can Teach Us About Attacks That Hide in Plain Sight
 
-**Author:** Kyriakos "Rock" Lambros
+**Author:** Anonymous (under review)
 
 **Date:** Spring 2026
 
-**Affiliation:** University of Denver, COMP 4531: Deep Learning
+**Affiliation:** anonymized for review
 
 [IMAGE PLACEHOLDER: University or cybersecurity-themed background]
 
@@ -218,12 +218,12 @@ The DistilBERT baselines raise an honest question: why not just use the bigger m
 
 **Multi-Turn Distributed Prompt Injection Detection**
 
-Kyriakos "Rock" Lambros | University of Denver | COMP 4531: Deep Learning
+Anonymous (under review)
 
-**Code, data, and models are publicly available:**
-- GitHub: github.com/rocklambros/multiturn-injection-detection
-- Dataset: huggingface.co/datasets/rockCO78/multiturn-injection-detection
-- Model: huggingface.co/rockCO78/multiturn-injection-detector
+**Code, data, and models are available in the review repository:**
+- Repository: anonymous.4open.science/r/multiturn-injection-detection-73E6
+- Dataset: included in the repository under `data/hf_dataset/`
+- Model: included in the repository under `models/`
 
 **Questions?**
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Git clean filter: normalize volatile Jupyter notebook metadata.
 
-Owner: rock@rockcyber.com
+Owner: anonymous@example.com
 Version: 1.0.0
 
 Purpose

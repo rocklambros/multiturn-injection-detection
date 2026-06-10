@@ -1,6 +1,6 @@
 # Temporal Detection of Distributed Prompt Injection Attacks in Multi-Turn Conversations
 
-**Rock Lambros**
+**Anonymous (under review)**
 
 ## Abstract
 
