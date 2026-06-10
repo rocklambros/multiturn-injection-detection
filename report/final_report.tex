@@ -91,7 +91,7 @@ architecture pairing a frozen single-turn GRU encoder (2.6M parameters)
 with a trainable sequence-level LSTM (27K trainable parameters) that
 carries accumulated context across turns. On 73,390 single-turn samples
 from eight public datasets, the Chollet heuristic correctly predicts
-that a TF-IDF bag-of-bigrams classifier (F1 = 0.834) outperforms all
+that a TF-IDF bag-of-bigrams classifier (Random Forest, F1 = 0.834) outperforms all
 deep learning models, including transformers, at this data scale. On a
 shared-prefix dataset of 27,180 synthetic multi-turn conversations
 generated with Claude Sonnet 4.6 across four difficulty tiers, the

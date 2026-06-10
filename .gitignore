@@ -26,3 +26,6 @@ video/
 
 # Local Python venv for eval regeneration
 .venv/
+
+# Large multi-turn dataset JSON (hosted on Zenodo; never commit the 140MB+ files)
+data/hf_dataset/multiturn_*.json
